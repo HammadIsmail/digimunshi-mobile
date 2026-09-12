@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -14,20 +14,23 @@ export default function HomeScreen() {
   const [recentEntries, setRecentEntries] = useState<any[]>([]);
   const router = useRouter();
   const { logout } = useAuth();
-  const { lastResponse, isProcessing, isRecording, clearResponse } = useVoice();
+  const { lastResponse, isProcessing, isRecording, clearResponse, ledgerVersion } = useVoice();
 
-  useEffect(() => {
-    loadSummary();
-  }, []);
-
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     try {
       const data = await api.getSummary();
       setSummary(data);
     } catch (err) {
       console.error('Failed to load summary:', err);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSummary();
+    }, [loadSummary, ledgerVersion])
+  );
+
 
   const handleLogout = async () => {
     await logout();

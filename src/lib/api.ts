@@ -197,6 +197,7 @@ class ApiClient {
       response_text: string;
       response_audio_url: string | null;
       resolved_entities: Record<string, any>;
+      ledger_updated?: boolean;
     }>('/voice/process', {
       method: 'POST',
       body: {
@@ -212,8 +213,10 @@ class ApiClient {
       response_text: string;
       response_audio_url: string | null;
       status: string;
+      ledger_updated?: boolean;
       [key: string]: any;
     }>('/voice/confirm', {
+
       method: 'POST',
       body: { pending_action_id: pendingActionId, confirmed },
     });

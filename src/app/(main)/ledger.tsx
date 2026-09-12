@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useVoice } from '@/contexts/VoiceContext';
 import { api } from '@/lib/api';
 
 interface Customer {
@@ -14,12 +15,9 @@ export default function LedgerScreen() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { ledgerVersion } = useVoice();
 
-  useEffect(() => {
-    loadCustomers();
-  }, []);
-
-  const loadCustomers = async () => {
+  const loadCustomers = useCallback(async () => {
     try {
       const data = await api.getCustomers();
       setCustomers(data);
@@ -28,7 +26,14 @@ export default function LedgerScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomers();
+    }, [loadCustomers, ledgerVersion])
+  );
+
 
   const renderCustomer = ({ item }: { item: Customer }) => (
     <TouchableOpacity

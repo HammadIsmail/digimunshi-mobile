@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import {
   AudioModule,
   RecordingPresets,
@@ -9,7 +9,6 @@ import {
 } from 'expo-audio';
 import { api } from '@/lib/api';
 import * as FileSystem from 'expo-file-system/legacy';
-
 
 function generateSessionId(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -27,12 +26,15 @@ interface VoiceResponse {
   response_text: string;
   response_audio_url: string | null;
   resolved_entities: any;
+  ledger_updated?: boolean;
 }
 
 interface VoiceContextType {
   isRecording: boolean;
   isProcessing: boolean;
   lastResponse: VoiceResponse | null;
+  ledgerVersion: number;
+  triggerRefresh: () => void;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   confirmAction: (pendingActionId: string, confirmed: boolean) => Promise<any>;
@@ -43,6 +45,8 @@ const VoiceContext = createContext<VoiceContextType>({
   isRecording: false,
   isProcessing: false,
   lastResponse: null,
+  ledgerVersion: 0,
+  triggerRefresh: () => {},
   startRecording: async () => {},
   stopRecording: async () => {},
   confirmAction: async () => {},
@@ -53,9 +57,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResponse, setLastResponse] = useState<VoiceResponse | null>(null);
+  const [ledgerVersion, setLedgerVersion] = useState(0);
   const sessionIdRef = useRef<string>(generateSessionId());
   const isStartingRef = useRef<boolean>(false);
   const startTimeRef = useRef<number>(0);
+
+  const triggerRefresh = useCallback(() => {
+    setLedgerVersion((v) => v + 1);
+  }, []);
+
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
@@ -150,6 +160,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const result = await api.processVoice(uri, sessionIdRef.current);
       setLastResponse(result);
 
+      if (result.ledger_updated) {
+        triggerRefresh();
+      }
+
       if (result.response_audio_url) {
         await playAudioResponse(result.response_audio_url);
       }
@@ -173,6 +187,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         pending_action_id: null,
       });
 
+      if (result.ledger_updated || confirmed) {
+        triggerRefresh();
+      }
+
       if (result.response_audio_url) {
         await playAudioResponse(result.response_audio_url);
       }
@@ -192,6 +210,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         isRecording,
         isProcessing,
         lastResponse,
+        ledgerVersion,
+        triggerRefresh,
         startRecording,
         stopRecording,
         confirmAction,
@@ -201,6 +221,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       {children}
     </VoiceContext.Provider>
   );
+
 }
 
 export const useVoice = () => useContext(VoiceContext);

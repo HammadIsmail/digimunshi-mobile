@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useVoice } from '@/contexts/VoiceContext';
 import { api } from '@/lib/api';
 
 interface Entry {
@@ -17,12 +18,9 @@ export default function CustomerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
+  const { ledgerVersion } = useVoice();
 
-  useEffect(() => {
-    loadCustomerData();
-  }, [id]);
-
-  const loadCustomerData = async () => {
+  const loadCustomerData = useCallback(async () => {
     if (!id) return;
     try {
       const [balanceData, entriesData] = await Promise.all([
@@ -36,7 +34,14 @@ export default function CustomerScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomerData();
+    }, [loadCustomerData, ledgerVersion])
+  );
+
 
   const renderEntry = ({ item }: { item: Entry }) => (
     <View style={styles.entryCard}>
