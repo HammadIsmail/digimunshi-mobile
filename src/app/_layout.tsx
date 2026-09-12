@@ -1,4 +1,5 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { VoiceProvider } from '@/contexts/VoiceContext';
@@ -6,6 +7,20 @@ import { View, ActivityIndicator } from 'react-native';
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(main)');
+    }
+  }, [isAuthenticated, isLoading, segments]);
 
   if (isLoading) {
     return (
@@ -17,11 +32,8 @@ function RootLayoutNav() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="(main)" />
-      ) : (
-        <Stack.Screen name="(auth)" />
-      )}
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(main)" />
     </Stack>
   );
 }

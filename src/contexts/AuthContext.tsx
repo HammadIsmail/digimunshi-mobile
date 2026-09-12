@@ -47,8 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await api.logout();
-    setIsAuthenticated(false);
+    try {
+      await api.logout();
+    } catch (e) {
+      console.warn('Error during logout:', e);
+    } finally {
+      setIsAuthenticated(false);
+    }
   };
 
   return (

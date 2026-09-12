@@ -136,14 +136,21 @@ class ApiClient {
   }
 
   async logout() {
-    const refreshToken = await this.getRefreshToken();
-    if (refreshToken) {
-      await this.request('/auth/logout', {
-        method: 'POST',
-        body: { refresh_token: refreshToken },
-      });
+    try {
+      const refreshToken = await this.getRefreshToken();
+      if (refreshToken) {
+        await this.request('/auth/logout', {
+          method: 'POST',
+          body: { refresh_token: refreshToken },
+        }).catch((err) => {
+          console.warn('Server logout failed, proceeding with local token clear:', err);
+        });
+      }
+    } catch (e) {
+      console.warn('Logout error:', e);
+    } finally {
+      await this.clearTokens();
     }
-    await this.clearTokens();
   }
 
   getBaseUrl(): string {
