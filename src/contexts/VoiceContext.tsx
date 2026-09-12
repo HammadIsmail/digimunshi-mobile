@@ -8,6 +8,8 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import { api } from '@/lib/api';
+import * as FileSystem from 'expo-file-system/legacy';
+
 
 function generateSessionId(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -94,6 +96,28 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const playAudioResponse = async (audioData: string | null) => {
+    if (!audioData) return;
+    try {
+      let playUri = audioData;
+
+      // Handle Base64 data URI (data:audio/mp3;base64,...) from stateless backend
+      if (audioData.startsWith('data:audio') || (!audioData.startsWith('http') && !audioData.startsWith('file:'))) {
+        const base64Content = audioData.includes(',') ? audioData.split(',')[1] : audioData;
+        const tempPath = `${FileSystem.cacheDirectory}reply_${Date.now()}.mp3`;
+        await FileSystem.writeAsStringAsync(tempPath, base64Content, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        playUri = tempPath;
+      }
+
+      const player = createAudioPlayer({ uri: playUri });
+      player.play();
+    } catch (err) {
+      console.warn('Voice playback failed:', err);
+    }
+  };
+
   const stopRecording = async () => {
     // If recorder is still preparing, wait briefly so we don't drop the stop call
     let waitCount = 0;
@@ -126,13 +150,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const result = await api.processVoice(uri, sessionIdRef.current);
       setLastResponse(result);
 
-      const audioUrl = result.response_audio_url
-        ? (result.response_audio_url.startsWith('http') ? result.response_audio_url : `${api.getBaseUrl()}${result.response_audio_url}`)
-        : null;
-
-      if (audioUrl) {
-        const player = createAudioPlayer({ uri: audioUrl });
-        player.play();
+      if (result.response_audio_url) {
+        await playAudioResponse(result.response_audio_url);
       }
     } catch (err) {
       console.error('Failed to process recording:', err);
@@ -154,13 +173,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         pending_action_id: null,
       });
 
-      const audioUrl = result.response_audio_url
-        ? (result.response_audio_url.startsWith('http') ? result.response_audio_url : `${api.getBaseUrl()}${result.response_audio_url}`)
-        : null;
-
-      if (audioUrl) {
-        const player = createAudioPlayer({ uri: audioUrl });
-        player.play();
+      if (result.response_audio_url) {
+        await playAudioResponse(result.response_audio_url);
       }
 
       return result;
@@ -168,6 +182,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       setIsProcessing(false);
     }
   };
+
 
   const clearResponse = () => setLastResponse(null);
 
