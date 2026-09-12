@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useVoice } from '@/contexts/VoiceContext';
 
 interface ConfirmationPromptProps {
@@ -25,7 +25,11 @@ export function ConfirmationPrompt({ transcript, text, pendingActionId }: Confir
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>⚠️ تصدیق فرمائیں</Text>
+      <View style={styles.headerBadgeRow}>
+        <View style={styles.warningPill}>
+          <Text style={styles.warningPillText}>⚠️ تصدیق فرمائیں</Text>
+        </View>
+      </View>
 
       {/* Show what the user said if available */}
       {transcript && transcript.trim().length > 0 && (
@@ -35,27 +39,33 @@ export function ConfirmationPrompt({ transcript, text, pendingActionId }: Confir
         </View>
       )}
 
-      {/* Munshi Prompt Question */}
+      {/* Munshi Question */}
       <View style={styles.promptCard}>
-        <Text style={styles.promptBadge}>🤖 ڈیجی منشی</Text>
-        <Text style={styles.text}>{text}</Text>
+        <Text style={styles.promptText}>{text}</Text>
       </View>
 
+      {/* Action Buttons */}
       <View style={styles.buttonRow}>
         <TouchableOpacity
           style={[styles.button, styles.confirmButton]}
           onPress={() => handleConfirm(true)}
           disabled={isLoading}
+          activeOpacity={0.8}
         >
-          <Text style={styles.confirmText}>✓ ہاں، کر دو</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.confirmText}>✓ ہاں، کر دیں</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, styles.cancelButton]}
           onPress={() => handleConfirm(false)}
           disabled={isLoading}
+          activeOpacity={0.8}
         >
-          <Text style={styles.cancelText}>✗ نہیں، رہنے دو</Text>
+          <Text style={styles.cancelText}>✗ نہیں، رہنے دیں</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -64,55 +74,67 @@ export function ConfirmationPrompt({ transcript, text, pendingActionId }: Confir
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 16,
-    borderWidth: 2,
-    borderColor: '#FF9800',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 14,
+    borderWidth: 1.5,
+    borderColor: '#E4E4E7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#E65100',
+  headerBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     marginBottom: 12,
+  },
+  warningPill: {
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  warningPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B45309',
   },
   transcriptCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
     borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#78350F',
+    padding: 10,
+    marginBottom: 10,
+    borderRightWidth: 3,
+    borderRightColor: '#94A3B8',
+    alignItems: 'flex-end',
   },
   transcriptBadge: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#78350F',
-    marginBottom: 4,
-    textTransform: 'uppercase',
+    color: '#64748B',
+    marginBottom: 2,
+    textAlign: 'right',
   },
   transcriptText: {
-    fontSize: 17,
-    color: '#1F2937',
-    fontWeight: '500',
-    lineHeight: 24,
+    fontSize: 15,
+    color: '#1E293B',
+    lineHeight: 22,
+    textAlign: 'right',
   },
   promptCard: {
     marginBottom: 16,
   },
-  promptBadge: {
-    fontSize: 11,
+  promptText: {
+    fontSize: 17,
+    color: '#0F172A',
+    lineHeight: 26,
     fontWeight: '700',
-    color: '#C2410C',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  text: {
-    fontSize: 16,
-    color: '#1F2937',
-    lineHeight: 24,
-    fontWeight: '600',
+    textAlign: 'right',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -120,24 +142,27 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   confirmButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#10B981',
   },
   cancelButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   confirmText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   cancelText: {
-    color: '#FFF',
-    fontSize: 18,
+    color: '#475569',
+    fontSize: 15,
     fontWeight: '600',
   },
 });
