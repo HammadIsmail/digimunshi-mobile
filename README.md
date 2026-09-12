@@ -5,6 +5,7 @@
 DigiMunshi Mobile is an intuitive, voice-controlled digital khata (ledger) mobile app built with React Native and Expo. Designed specifically for Pakistani kiryana store and retail shop owners, it features an authentic, native Urdu script interface (نستعلیق / اردو) paired with conversational voice recording and playback.
 
 - 🖥️ **Backend API Repository**: [digimunshi-backend](https://github.com/HammadIsmail/digimunshi-backend)
+- 🌐 **Web Landing Page**: [digimunshi-landing-page](https://github.com/HammadIsmail/digimunshi-landing-page)
 ---
 
 ## 🌟 Key Features
