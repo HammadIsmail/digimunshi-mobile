@@ -160,9 +160,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       const result = await api.processVoice(uri, sessionIdRef.current);
       setLastResponse(result);
 
-      if (result.ledger_updated) {
+      if (
+        result.ledger_updated ||
+        (!result.requires_confirmation && ['add_entry', 'record_udhaar', 'record_payment', 'add_customer', 'delete_entry'].includes(result.intent))
+      ) {
         triggerRefresh();
       }
+
 
       if (result.response_audio_url) {
         await playAudioResponse(result.response_audio_url);

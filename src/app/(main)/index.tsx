@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -25,11 +25,18 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Immediate real-time refresh on voice action while screen is active
+  useEffect(() => {
+    loadSummary();
+  }, [ledgerVersion, loadSummary]);
+
+  // Screen focus refresh when navigating back
   useFocusEffect(
     useCallback(() => {
       loadSummary();
-    }, [loadSummary, ledgerVersion])
+    }, [loadSummary])
   );
+
 
 
   const handleLogout = async () => {

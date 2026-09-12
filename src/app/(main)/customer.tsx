@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -36,11 +36,16 @@ export default function CustomerScreen() {
     }
   }, [id]);
 
+  useEffect(() => {
+    loadCustomerData();
+  }, [ledgerVersion, loadCustomerData]);
+
   useFocusEffect(
     useCallback(() => {
       loadCustomerData();
-    }, [loadCustomerData, ledgerVersion])
+    }, [loadCustomerData])
   );
+
 
 
   const renderEntry = ({ item }: { item: Entry }) => (
