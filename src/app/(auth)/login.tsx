@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { AppIcon } from '@/components/AppIcon';
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -45,7 +46,6 @@ export default function LoginScreen() {
 
   const formatDisplay = (num: string) => {
     if (!num) return '';
-    // Format e.g. 0300 1234567
     if (num.length > 4) {
       return `${num.slice(0, 4)} ${num.slice(4)}`;
     }
@@ -56,118 +56,153 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Navigation Header */}
+      {/* Top Bar with Shop Icon on Top Right */}
       <View style={styles.topHeader}>
-        <View style={styles.headerRightSpacer} />
-        <TouchableOpacity style={styles.iconCircleBtn} onPress={() => router.replace('/(auth)/register')}>
-          <Text style={styles.iconCircleText}>✦</Text>
+        <View style={styles.spacer} />
+        <TouchableOpacity
+          style={styles.shopCircleBtn}
+          onPress={() => router.replace('/(auth)/register')}
+          activeOpacity={0.7}
+        >
+          <AppIcon name="shop" width={18} height={16} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} bounces={false}>
-        {/* Title Area */}
+      <ScrollView contentContainerStyle={styles.content} bounces={false} showsVerticalScrollIndicator={false}>
+        {/* Main Title */}
         <View style={styles.titleSection}>
           <Text style={styles.headingTitle}>اپنا موبائل نمبر درج کریں</Text>
-          <Text style={styles.headingSubtitle}>لاگ ان یا نئے کھاتے کے لیے اپنا نمبر درج فرمائیں</Text>
         </View>
 
-        {/* Crisp Input Container */}
-        <View style={styles.inputOuterContainer}>
+        {/* Label Row: Left is (+92) پاکستان, Right is موبائل فون نمبر */}
+        <View style={styles.labelRow}>
+          <Text style={styles.countryLabel}>(+92) پاکستان</Text>
           <Text style={styles.inputLabel}>موبائل فون نمبر</Text>
-          <View style={[styles.inputBox, isValid && styles.inputBoxActive]}>
-            <View style={styles.phoneDisplay}>
-              <Text style={phoneNumber ? styles.phoneText : styles.placeholderText}>
-                {phoneNumber ? formatDisplay(phoneNumber) : '3XX XXXXXXX'}
-              </Text>
-            </View>
+        </View>
 
-            <View style={styles.dialCodeBadge}>
-              <Text style={styles.flagIcon}>🇵🇰</Text>
-              <Text style={styles.dialCodeText}>+92</Text>
-            </View>
+        {/* Input Box */}
+        <View style={[styles.inputBox, isValid && styles.inputBoxActive]}>
+          <View style={styles.phoneDisplay}>
+            <Text style={phoneNumber ? styles.phoneText : styles.placeholderText}>
+              <Text style={styles.cursorText}>|</Text>
+              {phoneNumber ? formatDisplay(phoneNumber) : '300 1234567'}
+            </Text>
+          </View>
+
+          <View style={styles.dividerLine} />
+
+          <View style={styles.dialCodeBadge}>
+            <Text style={styles.dialCodeText}>+92</Text>
+            <AppIcon name="flag" width={22} height={16} />
           </View>
         </View>
 
-        {/* Minimalist Wireframe Numeric Keypad */}
+        {/* Minimalist Wireframe Keypad with Underline Bars */}
         <View style={styles.keypadGrid}>
-          {/* Row 1 */}
+          {/* Row 1: 3 (DEF), 2, 1 */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('1')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>1</Text>
-              <Text style={styles.keySubLetters}> </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('2')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>2</Text>
-              <Text style={styles.keySubLetters}>ABC</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('3')} activeOpacity={0.6}>
               <Text style={styles.keyDigit}>3</Text>
               <Text style={styles.keySubLetters}>DEF</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('2')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>2</Text>
+              <Text style={styles.keySubLettersPlaceholder}> </Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('1')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>1</Text>
+              <Text style={styles.keySubLettersPlaceholder}> </Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
 
-          {/* Row 2 */}
+          {/* Row 2: 6 (MNO), 5 (JKL), 4 (GHI) */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('4')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>4</Text>
-              <Text style={styles.keySubLetters}>GHI</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('5')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>5</Text>
-              <Text style={styles.keySubLetters}>JKL</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('6')} activeOpacity={0.6}>
               <Text style={styles.keyDigit}>6</Text>
               <Text style={styles.keySubLetters}>MNO</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('5')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>5</Text>
+              <Text style={styles.keySubLetters}>JKL</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('4')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>4</Text>
+              <Text style={styles.keySubLetters}>GHI</Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
 
-          {/* Row 3 */}
+          {/* Row 3: 9 (WXYZ), 8 (TUV), 7 (PQRS) */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('7')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>7</Text>
-              <Text style={styles.keySubLetters}>PQRS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('8')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>8</Text>
-              <Text style={styles.keySubLetters}>TUV</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('9')} activeOpacity={0.6}>
               <Text style={styles.keyDigit}>9</Text>
               <Text style={styles.keySubLetters}>WXYZ</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('8')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>8</Text>
+              <Text style={styles.keySubLetters}>TUV</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('7')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>7</Text>
+              <Text style={styles.keySubLetters}>PQRS</Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
 
-          {/* Row 4 */}
+          {/* Row 4: Backspace, 0 (+), 0300 */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={[styles.keyBtn, styles.specialKeyBtn]} onPress={() => handleKeyPress('0300')} activeOpacity={0.6}>
-              <Text style={styles.specialKeyText}>0300</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={handleBackspace} activeOpacity={0.6}>
+              <View style={styles.backspaceWrapper}>
+                <AppIcon name="backspace" width={22} height={16} tintColor="#E05700" />
+              </View>
+              <Text style={styles.keySubLettersPlaceholder}> </Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('0')} activeOpacity={0.6}>
               <Text style={styles.keyDigit}>0</Text>
               <Text style={styles.keySubLetters}>+</Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.keyBtn, styles.specialKeyBtn]} onPress={handleBackspace} activeOpacity={0.6}>
-              <Text style={styles.backspaceIcon}>⌫</Text>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('0300')} activeOpacity={0.6}>
+              <Text style={styles.presetText}>0300</Text>
+              <Text style={styles.keySubLettersPlaceholder}> </Text>
+              <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* High-contrast Sleek CTA Button */}
+        {/* CTA Button: Solid #F05700 with Left Arrow and Text */}
         <TouchableOpacity
           style={[styles.ctaButton, isValid ? styles.ctaButtonActive : styles.ctaButtonDisabled]}
           onPress={handleContinue}
           disabled={!isValid}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.ctaButtonText, isValid ? styles.ctaButtonTextActive : styles.ctaButtonTextDisabled]}>
-            آگے بڑھیں
-          </Text>
+          <View style={styles.ctaContentRow}>
+            <AppIcon name="left_arrow" width={14} height={14} tintColor="#FFFFFF" />
+            <Text style={styles.ctaButtonText}>آگے بڑھیں</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Trust Assurance Footer */}
         <View style={styles.trustFooter}>
-          <Text style={styles.trustText}>🔒 تصدیقی کوڈ (OTP) بذریعہ SMS بھیجا جائے گا</Text>
+          <AppIcon name="lock" width={11} height={13} style={styles.lockIcon} />
+          <Text style={styles.trustText}>تصدیقی کوڈ (OTP) بذریعہ SMS بھیجا جائے گا</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -185,169 +220,198 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
-  headerRightSpacer: {
-    width: 36,
+  spacer: {
+    width: 40,
   },
-  iconCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 9999,
+  shopCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E4E4E7',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-  iconCircleText: {
-    fontSize: 14,
-    color: '#3F3F46',
-  },
   content: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   titleSection: {
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 28,
   },
   headingTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#18181B',
-    textAlign: 'right',
-    marginBottom: 6,
+    textAlign: 'center',
     letterSpacing: -0.5,
   },
-  headingSubtitle: {
-    fontSize: 13,
-    color: '#71717A',
-    textAlign: 'right',
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  inputOuterContainer: {
-    marginBottom: 24,
+  countryLabel: {
+    fontSize: 13,
+    color: '#3F3F46',
+    fontWeight: '500',
   },
   inputLabel: {
-    fontSize: 13,
-    color: '#52525B',
-    marginBottom: 8,
-    textAlign: 'right',
+    fontSize: 14,
+    color: '#3F3F46',
     fontWeight: '500',
   },
   inputBox: {
     height: 56,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#D4D4D8',
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    marginBottom: 36,
   },
   inputBoxActive: {
-    borderColor: '#18181B',
+    borderColor: '#F05700',
+  },
+  phoneDisplay: {
+    flex: 1,
+    paddingRight: 10,
+    justifyContent: 'center',
+  },
+  phoneText: {
+    fontSize: 19,
+    fontWeight: '600',
+    color: '#18181B',
+    letterSpacing: 0.5,
+    textAlign: 'left',
+  },
+  placeholderText: {
+    fontSize: 19,
+    color: '#A1A1AA',
+    letterSpacing: 0.5,
+    textAlign: 'left',
+  },
+  cursorText: {
+    color: '#71717A',
+    fontWeight: '300',
+  },
+  dividerLine: {
+    width: 1,
+    height: 22,
+    backgroundColor: '#D4D4D8',
+    marginHorizontal: 10,
   },
   dialCodeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 12,
-    borderLeftWidth: 1,
-    borderLeftColor: '#E4E4E7',
-    gap: 6,
-  },
-  flagIcon: {
-    fontSize: 16,
+    gap: 8,
   },
   dialCodeText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#18181B',
-  },
-  phoneDisplay: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  phoneText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#18181B',
-    letterSpacing: 1,
-  },
-  placeholderText: {
-    fontSize: 18,
-    color: '#A1A1AA',
   },
   keypadGrid: {
-    gap: 10,
-    marginBottom: 24,
+    gap: 22,
+    marginBottom: 44,
   },
   keypadRow: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   keyBtn: {
     flex: 1,
-    height: 62,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 4,
   },
   keyDigit: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#18181B',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#F05700',
+    lineHeight: 30,
+  },
+  presetText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F05700',
+    lineHeight: 30,
   },
   keySubLetters: {
     fontSize: 10,
-    color: '#A1A1AA',
-    fontWeight: '500',
-    marginTop: 1,
+    fontWeight: '700',
+    color: '#F05700',
+    marginTop: 2,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
-  specialKeyBtn: {
-    backgroundColor: '#FAFAFA',
+  keySubLettersPlaceholder: {
+    fontSize: 10,
+    marginTop: 2,
+    marginBottom: 8,
   },
-  specialKeyText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#52525B',
+  keyUnderline: {
+    width: 56,
+    height: 1.5,
+    backgroundColor: '#F05700',
+    borderRadius: 1,
+    opacity: 0.75,
   },
-  backspaceIcon: {
-    fontSize: 20,
-    color: '#52525B',
+  backspaceWrapper: {
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ctaButton: {
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 28,
   },
   ctaButtonActive: {
-    backgroundColor: '#18181B',
+    backgroundColor: '#F05700',
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   ctaButtonDisabled: {
-    backgroundColor: '#E4E4E7',
+    backgroundColor: '#FDBA74',
+  },
+  ctaContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   ctaButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  ctaButtonTextActive: {
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  ctaButtonTextDisabled: {
-    color: '#A1A1AA',
-  },
   trustFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  lockIcon: {
+    opacity: 0.7,
   },
   trustText: {
     fontSize: 12,
-    color: '#A1A1AA',
+    color: '#71717A',
     fontWeight: '400',
   },
 });
+

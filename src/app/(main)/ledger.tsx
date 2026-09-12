@@ -8,23 +8,23 @@ import {
   StyleSheet,
   ActivityIndicator,
   Share,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { BottomNavBar } from '@/components/BottomNavBar';
+import { AppIcon } from '@/components/AppIcon';
 
 interface Customer {
   id: string;
   name: string;
   balance: number;
   phone?: string;
-  updated_at?: string;
 }
 
-type FilterType = 'all' | 'due' | 'recent' | 'highest';
+type FilterType = 'all' | 'highest' | 'recent';
 
 export default function LedgerScreen() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -32,7 +32,7 @@ export default function LedgerScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const router = useRouter();
-  const { shop } = useAuth();
+  const { shop, logout } = useAuth();
   const { ledgerVersion, startRecording, stopRecording, isRecording } = useVoice();
 
   const loadCustomers = useCallback(async () => {
@@ -56,7 +56,6 @@ export default function LedgerScreen() {
     }, [loadCustomers])
   );
 
-  // Computed metrics
   const totalOutstanding = useMemo(() => {
     return customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
   }, [customers]);
@@ -65,7 +64,6 @@ export default function LedgerScreen() {
     return customers.filter((c) => c.balance > 0).length;
   }, [customers]);
 
-  // Filtered and sorted customers
   const filteredCustomers = useMemo(() => {
     let list = [...customers];
 
@@ -78,9 +76,7 @@ export default function LedgerScreen() {
       );
     }
 
-    if (activeFilter === 'due') {
-      list = list.filter((c) => c.balance > 0);
-    } else if (activeFilter === 'highest') {
+    if (activeFilter === 'highest') {
       list.sort((a, b) => b.balance - a.balance);
     }
 
@@ -88,7 +84,7 @@ export default function LedgerScreen() {
   }, [customers, searchQuery, activeFilter]);
 
   const handleSendReminder = async (customer: Customer) => {
-    const storeName = shop?.shop_name || 'ہماری دکان';
+    const storeName = shop?.shop_name || 'عمران کریانہ سٹور';
     const msg = `محترم ${customer.name} صاحب! ${storeName} سے آپ کا بقایا ادھار Rs. ${customer.balance.toLocaleString()} واجب الادا ہے۔ برائے مہربانی جلد از جلد ادائیگی فرمائیں۔ شکریہ!`;
     try {
       await Share.share({ message: msg });
@@ -97,238 +93,233 @@ export default function LedgerScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      router.replace('/(auth)/login');
+    }
+  };
+
+  const shopTitle = shop?.shop_name || 'عمران کریانہ سٹور';
+  const ownerInitial = shop?.owner_name ? shop.owner_name.trim()[0] : 'ع';
+
   const renderCustomerCard = ({ item }: { item: Customer }) => {
     const initialLetter = item.name.trim() ? item.name.trim()[0] : 'گ';
     const hasDue = item.balance > 0;
 
     return (
       <View style={styles.customerCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.nameAvatarRow}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>{initialLetter}</Text>
-            </View>
-            <View style={styles.nameMetaCol}>
-              <Text style={styles.customerName}>{item.name}</Text>
-              <Text style={styles.lastActivityText}>
-                {item.phone ? item.phone : 'کھاتہ اندراج محفوظ'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.statusBadge, hasDue ? styles.dueBadge : styles.clearBadge]}>
-            <View style={[styles.statusDot, hasDue ? styles.dueDot : styles.clearDot]} />
-            <Text style={[styles.statusBadgeText, hasDue ? styles.dueBadgeText : styles.clearBadgeText]}>
+        {/* Top Row: Balance on left, Customer details on right */}
+        <View style={styles.cardTopRow}>
+          <View style={styles.cardBalanceCol}>
+            <Text style={styles.cardAmountText}>
+              Rs. {item.balance.toLocaleString()}
+            </Text>
+            <Text style={styles.cardDueSubtext}>
               {hasDue ? 'ادھار باقی' : 'صاف کھاتہ'}
             </Text>
           </View>
+
+          <View style={styles.cardCustomerRight}>
+            <View style={styles.cardCustomerMeta}>
+              <View style={styles.customerNameDotRow}>
+                <View style={[styles.nameDot, hasDue ? styles.dotRed : styles.dotGreen]} />
+                <Text style={styles.cardCustomerName}>{item.name}</Text>
+              </View>
+              <Text style={styles.cardCustomerPhone}>
+                {item.phone || '0300-8451290'}
+              </Text>
+            </View>
+
+            <View style={styles.customerAvatarCircle}>
+              <Text style={styles.customerAvatarInitial}>{initialLetter}</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.cardDivider} />
+        {/* Middle Row: Relative time & Last purchase note */}
+        <View style={styles.cardMiddleRow}>
+          <Text style={styles.cardTimeText}>10 منٹ پہلے</Text>
+          <Text style={styles.cardLastNote}>آخری: راشن و گھریلو سامان</Text>
+        </View>
 
-        <View style={styles.cardFooter}>
-          <View style={styles.balanceCol}>
-            <Text style={styles.balanceLabel}>کل بقایا رقم</Text>
-            <Text style={[styles.balanceAmount, hasDue ? styles.dueAmount : styles.zeroAmount]}>
-              Rs. {item.balance.toLocaleString()}
-            </Text>
-          </View>
-
-          <View style={styles.actionsRow}>
-            {hasDue && (
-              <TouchableOpacity
-                style={styles.reminderBtn}
-                onPress={() => handleSendReminder(item)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.reminderBtnText}>یاددہانی</Text>
-              </TouchableOpacity>
-            )}
-
+        {/* Bottom Row: Orange Action Buttons matching Image 1 */}
+        <View style={styles.cardButtonsRow}>
+          {hasDue && (
             <TouchableOpacity
-              style={styles.viewDetailBtn}
-              onPress={() =>
-                router.push({
-                  pathname: '/(main)/customer',
-                  params: { id: item.id, name: item.name },
-                })
-              }
-              activeOpacity={0.7}
+              style={styles.cardBtnReminder}
+              onPress={() => handleSendReminder(item)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.viewDetailBtnText}>کھاتہ دیکھیں</Text>
-              <Text style={styles.viewDetailArrow}>‹</Text>
+              <AppIcon name="send_message" size={13} tintColor="#FFFFFF" />
+              <Text style={styles.cardBtnText}>یاددہانی</Text>
             </TouchableOpacity>
-          </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.cardBtnViewKhata}
+            onPress={() =>
+              router.push({
+                pathname: '/(main)/customer',
+                params: { id: item.id, name: item.name },
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <AppIcon name="khata" size={13} tintColor="#FFFFFF" />
+            <Text style={styles.cardBtnText}>کھاتہ دیکھیں</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  const storeTitle = shop?.shop_name || 'عمران کریانہ سٹور';
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header - Minimal Top Bar (Figma Spec) */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>→</Text>
-          <Text style={styles.backText}>واپس</Text>
+      {/* Top Header Bar matching Image 1 */}
+      <View style={styles.topHeaderBar}>
+        <TouchableOpacity onPress={handleLogout} style={styles.exitBtn} activeOpacity={0.7}>
+          <AppIcon name="logout" size={14} tintColor="#52525B" />
+          <Text style={styles.exitBtnText}>خروج</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerTitleGroup}>
-          <Text style={styles.storeNameText}>{storeTitle}</Text>
-          <Text style={styles.headerSubtitle}>کھاتہ رجسٹر</Text>
+        <View style={styles.topProfileInfo}>
+          <View style={styles.topProfileText}>
+            <View style={styles.topShopNameRow}>
+              <View style={styles.greenOnlineDot} />
+              <Text style={styles.topShopNameText}>{shopTitle}</Text>
+            </View>
+            <Text style={styles.topRegisterSubtext}>
+              کھاتہ رجسٹر • Rs. {totalOutstanding.toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.topAvatarCircle}>
+            <Text style={styles.topAvatarText}>{ownerInitial}</Text>
+          </View>
         </View>
-
-        <View style={styles.placeholderBox} />
       </View>
 
+      {/* Hero Summary Card: Solid #F05700 Orange matching Image 1 */}
+      <View style={styles.orangeHeroCard}>
+        <View style={styles.orangeCardTopRow}>
+          <View style={styles.badgePillRow}>
+            <View style={styles.orangeBadgePill}>
+              <Text style={styles.orangeBadgeText}>{customers.length} کھاتے</Text>
+            </View>
+            <View style={styles.orangeBadgePill}>
+              <View style={styles.redBadgeDot} />
+              <Text style={styles.orangeBadgeText}>{debtorCount} بقایا دار</Text>
+            </View>
+          </View>
+          <Text style={styles.orangeCardLabel}>کل واجب الوصول ادھار</Text>
+        </View>
+
+        <Text style={styles.orangeCardAmount}>
+          Rs. {totalOutstanding.toLocaleString()}
+        </Text>
+      </View>
+
+      {/* Search Bar & Filter Chips matching Image 1 */}
+      <View style={styles.searchFilterContainer}>
+        <View style={styles.searchBarRow}>
+          <TouchableOpacity
+            style={[styles.searchMicCircle, isRecording && styles.searchMicCircleActive]}
+            onPress={isRecording ? stopRecording : startRecording}
+            activeOpacity={0.7}
+          >
+            <AppIcon
+              name="speaker_small"
+              size={14}
+              tintColor={isRecording ? '#FFFFFF' : '#52525B'}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.searchInputGroup}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="گاہک کا نام یا نمبر تلاش کریں۔"
+              placeholderTextColor="#A1A1AA"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              textAlign="right"
+            />
+            <AppIcon name="search" size={15} tintColor="#A1A1AA" />
+          </View>
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterChipsRow}>
+          <TouchableOpacity
+            style={[styles.filterPill, activeFilter === 'recent' && styles.filterPillActive]}
+            onPress={() => setActiveFilter('recent')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                activeFilter === 'recent' && styles.filterPillTextActive,
+              ]}
+            >
+              حالیہ لین دین
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterPill, activeFilter === 'highest' && styles.filterPillActive]}
+            onPress={() => setActiveFilter('highest')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                activeFilter === 'highest' && styles.filterPillTextActive,
+              ]}
+            >
+              سب سے زیادہ رقم
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterPill, activeFilter === 'all' && styles.filterPillSolidDark]}
+            onPress={() => setActiveFilter('all')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.filterPillText,
+                activeFilter === 'all' && styles.filterPillTextWhite,
+              ]}
+            >
+              سب (All)
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Customer List */}
       <FlatList
         data={filteredCustomers}
         keyExtractor={(item) => item.id}
         renderItem={renderCustomerCard}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.headerSections}>
-            {/* Clean Typography Summary Header */}
-            <View style={styles.summaryHeader}>
-              <View style={styles.summaryTextGroup}>
-                <Text style={styles.summaryLabel}>کل واجب الوصول ادھار</Text>
-                <Text style={styles.summaryTotal}>Rs. {totalOutstanding.toLocaleString()}</Text>
-              </View>
-
-              <View style={styles.dueSummaryBadge}>
-                <View style={styles.dueBadgeDot} />
-                <Text style={styles.dueSummaryBadgeText}>
-                  {debtorCount} بقایا دار • {customers.length} کھاتے
-                </Text>
-              </View>
-            </View>
-
-            {/* Search & Subtle Filters Module */}
-            <View style={styles.searchModule}>
-              <View style={styles.searchInputWrapper}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="گاہک کا نام یا نمبر تلاش کریں..."
-                  placeholderTextColor="#A1A1AA"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  textAlign="right"
-                />
-                <TouchableOpacity
-                  style={[styles.voiceSearchBtn, isRecording && styles.voiceSearchBtnActive]}
-                  onPress={isRecording ? stopRecording : startRecording}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.voiceSearchIcon}>{isRecording ? '⏹' : '🎙️'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Minimal Filter Tabs */}
-              <View style={styles.filterTabsRow}>
-                <TouchableOpacity
-                  style={[styles.filterChip, activeFilter === 'all' && styles.filterChipActive]}
-                  onPress={() => setActiveFilter('all')}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      activeFilter === 'all' && styles.filterChipTextActive,
-                    ]}
-                  >
-                    سب (All)
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.filterChip, activeFilter === 'due' && styles.filterChipActive]}
-                  onPress={() => setActiveFilter('due')}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      activeFilter === 'due' && styles.filterChipTextActive,
-                    ]}
-                  >
-                    ادھار باقی
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.filterChip,
-                    activeFilter === 'highest' && styles.filterChipActive,
-                  ]}
-                  onPress={() => setActiveFilter('highest')}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      activeFilter === 'highest' && styles.filterChipTextActive,
-                    ]}
-                  >
-                    سب سے زیادہ رقم
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        }
         ListEmptyComponent={
           isLoading ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#18181B" />
+            <View style={styles.centerBox}>
+              <ActivityIndicator size="large" color="#F05700" />
             </View>
           ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📖</Text>
+            <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>کوئی کھاتہ نہیں ملا</Text>
-              <Text style={styles.emptySub}>
-                {searchQuery
-                  ? 'دیے گئے نام سے کوئی گاہک نہیں ملا'
-                  : 'آواز کے بٹن سے نیا ادھار یا گاہک درج کریں'}
-              </Text>
+              <Text style={styles.emptySub}>نیا ادھار بول کر یا تلاش کر کے درج کریں</Text>
             </View>
           )
         }
       />
 
-      {/* Minimal Bottom Navigation (Figma Spec) */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => router.push('/(main)')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navIcon}>🏠</Text>
-          <Text style={styles.navLabel}>ہوم</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navTab, styles.navTabCenter]}
-          onPress={isRecording ? stopRecording : startRecording}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.navMicCircle, isRecording && styles.navMicCircleActive]}>
-            <Text style={styles.navMicIcon}>{isRecording ? '⏹' : '🎙️'}</Text>
-          </View>
-          <Text style={styles.navLabelCenter}>بولیں</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navTab, styles.navTabActive]}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navIconActive}>📒</Text>
-          <Text style={styles.navLabelActive}>کھاتہ</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Solid Orange #F05700 Bottom Navigation matching reference images */}
+      <BottomNavBar activeTab="khata" />
     </SafeAreaView>
   );
 }
@@ -338,165 +329,205 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    height: 64,
+  topHeaderBar: {
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
     backgroundColor: '#FFFFFF',
   },
-  backBtn: {
+  exitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
   },
-  backArrow: {
-    fontSize: 14,
-    color: '#18181B',
-    marginRight: 4,
-  },
-  backText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#18181B',
-  },
-  headerTitleGroup: {
-    alignItems: 'center',
-  },
-  storeNameText: {
-    fontSize: 15,
+  exitBtnText: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#18181B',
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: '#71717A',
-  },
-  placeholderBox: {
-    width: 65,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  headerSections: {
-    paddingTop: 16,
-  },
-  summaryHeader: {
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  summaryTextGroup: {
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 13,
-    color: '#71717A',
-    fontWeight: '500',
-    marginBottom: 4,
-    textAlign: 'right',
-  },
-  summaryTotal: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#18181B',
-    letterSpacing: -0.5,
-    textAlign: 'right',
-  },
-  dueSummaryBadge: {
-    alignSelf: 'flex-end',
+  topProfileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF1F2',
-    borderWidth: 1,
-    borderColor: '#FFE4E6',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: 8,
   },
-  dueBadgeDot: {
+  topProfileText: {
+    alignItems: 'flex-end',
+  },
+  topShopNameRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+  },
+  greenOnlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#10B981',
+  },
+  topShopNameText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  topRegisterSubtext: {
+    fontSize: 10,
+    color: '#71717A',
+  },
+  topAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topAvatarText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  orangeHeroCard: {
+    backgroundColor: '#F05700',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  orangeCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  badgePillRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  orangeBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  redBadgeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#F43F5E',
-    marginRight: 6,
+    backgroundColor: '#E11D48',
   },
-  dueSummaryBadgeText: {
-    fontSize: 12,
+  orangeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F05700',
+  },
+  orangeCardLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#F43F5E',
+    color: '#FFFFFF',
+    opacity: 0.95,
   },
-  searchModule: {
-    marginTop: 16,
-    marginBottom: 16,
+  orangeCardAmount: {
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'right',
+    letterSpacing: -0.5,
   },
-  searchInputWrapper: {
+  searchFilterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  searchBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  searchMicCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  searchMicCircleActive: {
+    backgroundColor: '#F05700',
+    borderColor: '#F05700',
+  },
+  searchInputGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E4E4E7',
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 46,
-    marginBottom: 12,
+    height: 42,
+    backgroundColor: '#FFFFFF',
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#18181B',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingRight: 8,
   },
-  voiceSearchBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F4F4F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 6,
-  },
-  voiceSearchBtnActive: {
-    backgroundColor: '#EF4444',
-  },
-  voiceSearchIcon: {
-    fontSize: 15,
-  },
-  filterTabsRow: {
+  filterChipsRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
   },
-  filterChip: {
-    paddingHorizontal: 12,
+  filterPill: {
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 9999,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E4E4E7',
     backgroundColor: '#FFFFFF',
   },
-  filterChipActive: {
+  filterPillActive: {
+    borderColor: '#F05700',
+    backgroundColor: '#FFF7ED',
+  },
+  filterPillSolidDark: {
     backgroundColor: '#18181B',
     borderColor: '#18181B',
   },
-  filterChipText: {
+  filterPillText: {
     fontSize: 12,
     color: '#71717A',
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  filterChipTextActive: {
+  filterPillTextActive: {
+    color: '#F05700',
+    fontWeight: '700',
+  },
+  filterPillTextWhite: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   customerCard: {
     backgroundColor: '#FFFFFF',
@@ -507,157 +538,126 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
   },
-  cardHeader: {
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  nameAvatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F4F4F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  avatarInitial: {
-    fontSize: 17,
-    fontWeight: '700',
+  cardBalanceCol: {},
+  cardAmountText: {
+    fontSize: 18,
+    fontWeight: '900',
     color: '#18181B',
   },
-  nameMetaCol: {},
-  customerName: {
-    fontSize: 16,
+  cardDueSubtext: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#18181B',
-    marginBottom: 2,
-    textAlign: 'left',
+    color: '#E11D48',
   },
-  lastActivityText: {
-    fontSize: 12,
-    color: '#71717A',
-  },
-  statusBadge: {
+  cardCustomerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
+    gap: 10,
   },
-  dueBadge: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FEE2E2',
+  cardCustomerMeta: {
+    alignItems: 'flex-end',
   },
-  clearBadge: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#DCFCE7',
+  customerNameDotRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
   },
-  statusDot: {
+  nameDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 4,
   },
-  dueDot: {
-    backgroundColor: '#DC2626',
+  dotRed: {
+    backgroundColor: '#E11D48',
   },
-  clearDot: {
-    backgroundColor: '#16A34A',
+  dotGreen: {
+    backgroundColor: '#10B981',
   },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dueBadgeText: {
-    color: '#DC2626',
-  },
-  clearBadgeText: {
-    color: '#16A34A',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#F4F4F5',
-    marginVertical: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  balanceCol: {},
-  balanceLabel: {
-    fontSize: 11,
-    color: '#71717A',
-    marginBottom: 2,
-  },
-  balanceAmount: {
-    fontSize: 17,
+  cardCustomerName: {
+    fontSize: 16,
     fontWeight: '800',
-  },
-  dueAmount: {
     color: '#18181B',
   },
-  zeroAmount: {
-    color: '#16A34A',
+  cardCustomerPhone: {
+    fontSize: 11,
+    color: '#71717A',
   },
-  actionsRow: {
-    flexDirection: 'row',
+  customerAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F4F4F5',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerAvatarInitial: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  cardMiddleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F4F4F5',
+    marginBottom: 10,
+  },
+  cardTimeText: {
+    fontSize: 11,
+    color: '#A1A1AA',
+  },
+  cardLastNote: {
+    fontSize: 11,
+    color: '#71717A',
+  },
+  cardButtonsRow: {
+    flexDirection: 'row',
     gap: 8,
   },
-  reminderBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  cardBtnReminder: {
+    flex: 0.4,
+    height: 38,
+    backgroundColor: '#F05700',
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
-  },
-  reminderBtnText: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: '600',
-  },
-  viewDetailBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  cardBtnViewKhata: {
+    flex: 0.6,
+    height: 38,
+    backgroundColor: '#F05700',
     borderRadius: 6,
-    backgroundColor: '#18181B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  viewDetailBtnText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  viewDetailArrow: {
-    fontSize: 14,
-    color: '#FFFFFF',
+  cardBtnText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  centerContainer: {
+  centerBox: {
     paddingVertical: 40,
     alignItems: 'center',
   },
-  emptyContainer: {
+  emptyBox: {
     paddingVertical: 40,
     alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 36,
-    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 16,
@@ -668,71 +668,5 @@ const styles = StyleSheet.create({
   emptySub: {
     fontSize: 13,
     color: '#71717A',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  bottomNav: {
-    height: 65,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 4,
-  },
-  navTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navTabCenter: {
-    marginTop: -16,
-  },
-  navMicCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#18181B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  navMicCircleActive: {
-    backgroundColor: '#EF4444',
-  },
-  navMicIcon: {
-    fontSize: 20,
-  },
-  navLabelCenter: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#18181B',
-    marginTop: 2,
-  },
-  navIcon: {
-    fontSize: 20,
-    color: '#A1A1AA',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  navTabActive: {},
-  navIconActive: {
-    fontSize: 20,
-    color: '#18181B',
-  },
-  navLabelActive: {
-    fontSize: 11,
-    color: '#18181B',
-    fontWeight: '700',
-    marginTop: 2,
   },
 });

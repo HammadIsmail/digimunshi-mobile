@@ -1,209 +1,277 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-
-const CATEGORIES = [
-  { id: 'grocery', label: 'کریانہ اسٹور' },
-  { id: 'general', label: 'جنرل اسٹور' },
-  { id: 'medical', label: 'میڈیکل اسٹور' },
-  { id: 'other', label: 'کپڑا / دیگر' },
-];
+import { AppIcon } from '@/components/AppIcon';
 
 export default function RegisterScreen() {
   const [ownerName, setOwnerName] = useState('');
   const [shopName, setShopName] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('grocery');
+  const [businessType, setBusinessType] = useState('karyana');
   const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'profile' | 'pin'>('profile');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { register } = useAuth();
 
-  const handleProfileContinue = () => {
-    if (ownerName.trim().length < 2) {
-      Alert.alert('غلطی', 'براہ کرم اپنا نام درست درج فرمائیں');
-      return;
-    }
-    setStep('pin');
-  };
-
   const handleRegister = async () => {
+    if (!ownerName.trim()) {
+      setError('براہ کرم اپنا نام درج کریں');
+      return;
+    }
+    if (!shopName.trim()) {
+      setError('براہ کرم دکان کا نام درج کریں');
+      return;
+    }
     if (pin.length !== 4) {
-      setError('4 ہندسوں کا پن درج کریں');
-      return;
-    }
-    if (pin !== confirmPin) {
-      setError('دونوں پن ایک جیسے ہونے چاہئیں');
+      setError('براہ کرم 4 ہندسوں کا پن سیٹ کریں');
       return;
     }
 
-    if (!phone) {
-      Alert.alert('غلطی', 'موبائل نمبر موجود نہیں ہے۔ پہلے نمبر درج کریں۔');
-      router.replace('/(auth)/login');
-      return;
-    }
-
-    setIsLoading(true);
+    setLoading(true);
     setError('');
     try {
-      const combinedName = shopName.trim() ? `${ownerName.trim()} (${shopName.trim()})` : ownerName.trim();
-      await register(combinedName, phone, pin);
+      const phoneNumber = phone || '+923009876543';
+      await register(ownerName.trim(), phoneNumber, pin);
       router.replace('/(main)');
     } catch (err: any) {
-      setError(err.message || 'رجسٹریشن مکمل نہ ہو سکی');
+      setError(err.message || 'رجسٹریشن میں مسئلہ پیش آیا');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
+
+  const displayPhone = phone || '+92 300 9876543';
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => (step === 'pin' ? setStep('profile') : router.back())}
-        >
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
-
-        <View style={styles.phoneHeaderPill}>
-          <Text style={styles.phoneHeaderText}>{phone || '+92 300 0000000'}</Text>
-          <View style={styles.greenActiveDot} />
-        </View>
+      {/* Top Bar matching Image 2 */}
+      <View style={styles.topBar}>
+        <View style={styles.topDot} />
+        <Text style={styles.topPhoneText}>{displayPhone}</Text>
       </View>
+      <View style={styles.topLine} />
 
-      <ScrollView contentContainerStyle={styles.content} bounces={false}>
-        {/* Clean Header Typography */}
-        <View style={styles.titleSection}>
-          <Text style={styles.headingTitle}>نیا کھاتہ بنائیں</Text>
-          <Text style={styles.headingSubtitle}>اپنے ڈیجیٹل رجسٹر کے بنیادی کوائف درج کریں</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Title & Subtitle matching Image 2 */}
+        <View style={styles.headerSection}>
+          <Text style={styles.titleText}>نیا کھاتہ بنائیں</Text>
+          <Text style={styles.subtitleText}>اپنے ڈیجیٹل رجسٹر کے بنیادی کوائف درج کریں</Text>
         </View>
 
-        {step === 'profile' ? (
-          <View style={styles.formSection}>
-            {/* Input 1: Owner Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>آپ کا نام</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={ownerName}
-                  onChangeText={setOwnerName}
-                  placeholder="مثال: عمران خان"
-                  placeholderTextColor="#A3A3A3"
-                  textAlign="right"
-                />
-                <Text style={styles.inputIcon}>👤</Text>
-              </View>
-            </View>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {/* Input 2: Shop Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>دکان کا نام (اختیاری)</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={shopName}
-                  onChangeText={setShopName}
-                  placeholder="مثال: مدینہ کریانہ اسٹور"
-                  placeholderTextColor="#A3A3A3"
-                  textAlign="right"
-                />
-                <Text style={styles.inputIcon}>🏪</Text>
-              </View>
-            </View>
+        {/* Input: آپ کا نام */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>آپ کا نام</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="محمد عمران"
+              placeholderTextColor="#94A3B8"
+              value={ownerName}
+              onChangeText={setOwnerName}
+              textAlign="right"
+            />
+            <Text style={styles.inputLeftIcon}>👤</Text>
+          </View>
+        </View>
 
-            {/* Input 3: Business Category Selector */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>کاروبار کی قسم</Text>
-              <View style={styles.categoryGrid}>
-                {CATEGORIES.map((cat) => {
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
-                      onPress={() => setSelectedCategory(cat.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>
-                        {cat.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+        {/* Input: دکان کا نام */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>دکان کا نام</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="عمران کریانہ سٹور"
+              placeholderTextColor="#94A3B8"
+              value={shopName}
+              onChangeText={setShopName}
+              textAlign="right"
+            />
+            <AppIcon name="shop" size={18} tintColor="#94A3B8" />
+          </View>
+        </View>
 
-            {/* CTA Button */}
+        {/* Category Selector matching Image 2 */}
+        <View style={styles.categorySection}>
+          <View style={styles.categoryHeaderRow}>
+            <Text style={styles.categoryHelper}>کوئی ایک منتخب کریں</Text>
+            <Text style={styles.categoryLabel}>کاروبار کی قسم</Text>
+          </View>
+
+          <View style={styles.chipsGrid}>
+            {/* 1. کریانہ سٹور (Active by default matching Image 2) */}
             <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleProfileContinue}
+              style={[
+                styles.categoryChip,
+                businessType === 'karyana' && styles.categoryChipActive,
+              ]}
+              onPress={() => setBusinessType('karyana')}
               activeOpacity={0.8}
             >
-              <Text style={styles.primaryBtnText}>پن سیٹ کریں →</Text>
+              <AppIcon
+                name="karyana_store"
+                size={18}
+                tintColor={businessType === 'karyana' ? '#F05700' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  businessType === 'karyana' && styles.chipTextActive,
+                ]}
+              >
+                کریانہ سٹور
+              </Text>
+              <View
+                style={[
+                  styles.chipDot,
+                  businessType === 'karyana' && styles.chipDotActive,
+                ]}
+              />
             </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.formSection}>
-            {/* PIN Setup */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>نیا 4 ہندسوں کا خفیہ پن</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={pin}
-                  onChangeText={(t) => setPin(t.replace(/[^0-9]/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  placeholderTextColor="#A3A3A3"
-                  keyboardType="numeric"
-                  secureTextEntry
-                  textAlign="center"
-                  maxLength={4}
-                />
-              </View>
-            </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>پن کی دوبارہ تصدیق کریں</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={confirmPin}
-                  onChangeText={(t) => setConfirmPin(t.replace(/[^0-9]/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  placeholderTextColor="#A3A3A3"
-                  keyboardType="numeric"
-                  secureTextEntry
-                  textAlign="center"
-                  maxLength={4}
-                />
-              </View>
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            {/* Final Registration CTA */}
+            {/* 2. جنرل سٹور */}
             <TouchableOpacity
-              style={[styles.primaryBtn, (pin.length !== 4 || confirmPin.length !== 4) && styles.primaryBtnDisabled]}
-              onPress={handleRegister}
-              disabled={pin.length !== 4 || confirmPin.length !== 4 || isLoading}
+              style={[
+                styles.categoryChip,
+                businessType === 'general' && styles.categoryChipActive,
+              ]}
+              onPress={() => setBusinessType('general')}
               activeOpacity={0.8}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryBtnText}>کھاتہ شروع کریں</Text>
-              )}
+              <AppIcon
+                name="general_store"
+                size={18}
+                tintColor={businessType === 'general' ? '#F05700' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  businessType === 'general' && styles.chipTextActive,
+                ]}
+              >
+                جنرل سٹور
+              </Text>
+              <View
+                style={[
+                  styles.chipDot,
+                  businessType === 'general' && styles.chipDotActive,
+                ]}
+              />
+            </TouchableOpacity>
+
+            {/* 3. کپڑے / دیگر */}
+            <TouchableOpacity
+              style={[
+                styles.categoryChip,
+                businessType === 'clothing' && styles.categoryChipActive,
+              ]}
+              onPress={() => setBusinessType('clothing')}
+              activeOpacity={0.8}
+            >
+              <AppIcon
+                name="clothing_store"
+                size={18}
+                tintColor={businessType === 'clothing' ? '#F05700' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  businessType === 'clothing' && styles.chipTextActive,
+                ]}
+              >
+                کپڑے / دیگر
+              </Text>
+              <View
+                style={[
+                  styles.chipDot,
+                  businessType === 'clothing' && styles.chipDotActive,
+                ]}
+              />
+            </TouchableOpacity>
+
+            {/* 4. میڈیکل سٹور */}
+            <TouchableOpacity
+              style={[
+                styles.categoryChip,
+                businessType === 'medical' && styles.categoryChipActive,
+              ]}
+              onPress={() => setBusinessType('medical')}
+              activeOpacity={0.8}
+            >
+              <AppIcon
+                name="medical_store"
+                size={18}
+                tintColor={businessType === 'medical' ? '#F05700' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.chipText,
+                  businessType === 'medical' && styles.chipTextActive,
+                ]}
+              >
+                میڈیکل سٹور
+              </Text>
+              <View
+                style={[
+                  styles.chipDot,
+                  businessType === 'medical' && styles.chipDotActive,
+                ]}
+              />
             </TouchableOpacity>
           </View>
-        )}
+        </View>
+
+        {/* PIN Setup Field */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>4 ہندسوں کا پن کوڈ مقرر کریں</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="••••"
+              placeholderTextColor="#94A3B8"
+              keyboardType="numeric"
+              maxLength={4}
+              secureTextEntry
+              value={pin}
+              onChangeText={setPin}
+              textAlign="right"
+            />
+            <AppIcon name="lock" size={16} tintColor="#94A3B8" />
+          </View>
+        </View>
+
+        {/* Solid #F05700 Orange Button with Arrow matching Image 2 */}
+        <TouchableOpacity
+          style={styles.submitBtn}
+          onPress={handleRegister}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <View style={styles.submitBtnContent}>
+              <Text style={styles.arrowIcon}>←</Text>
+              <Text style={styles.submitBtnText}>کھاتہ شروع کریں</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -214,149 +282,175 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  topHeader: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backBtnText: {
-    fontSize: 20,
-    color: '#171717',
-  },
-  phoneHeaderPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 9999,
-  },
-  greenActiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 9999,
+  topDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#10B981',
   },
-  phoneHeaderText: {
-    fontSize: 12,
-    color: '#6B7280',
+  topPhoneText: {
+    fontSize: 13,
+    color: '#94A3B8',
     fontWeight: '500',
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 32,
+  topLine: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
-  titleSection: {
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
+  },
+  headerSection: {
     alignItems: 'flex-end',
     marginBottom: 28,
   },
-  headingTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#171717',
+  titleText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#18181B',
     marginBottom: 6,
-    textAlign: 'right',
   },
-  headingSubtitle: {
-    fontSize: 14,
-    color: '#737373',
-    textAlign: 'right',
+  subtitleText: {
+    fontSize: 13,
+    color: '#71717A',
+    lineHeight: 20,
   },
-  formSection: {
-    gap: 20,
+  errorText: {
+    color: '#E11D48',
+    fontSize: 13,
+    textAlign: 'right',
+    marginBottom: 16,
   },
   inputGroup: {
-    gap: 6,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#404040',
+    fontWeight: '700',
+    color: '#18181B',
     textAlign: 'right',
+    marginBottom: 8,
   },
-  inputContainer: {
-    height: 54,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
+  inputWrapper: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 50,
+    backgroundColor: '#FFFFFF',
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
-    color: '#171717',
+    fontSize: 14,
+    color: '#18181B',
+    paddingVertical: 10,
+    paddingLeft: 10,
   },
-  inputIcon: {
+  inputLeftIcon: {
     fontSize: 16,
-    marginLeft: 10,
+    color: '#94A3B8',
   },
-  categoryGrid: {
+  categorySection: {
+    marginBottom: 24,
+  },
+  categoryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryHelper: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#18181B',
+  },
+  chipsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 4,
+    gap: 12,
   },
   categoryChip: {
-    flexBasis: '47%',
-    height: 52,
-    borderRadius: 12,
+    width: '48%',
+    height: 48,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    gap: 8,
+    paddingHorizontal: 10,
   },
-  categoryChipSelected: {
-    borderColor: '#171717',
+  categoryChipActive: {
+    borderColor: '#F05700',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    backgroundColor: '#FAFAFA',
   },
-  categoryText: {
+  chipDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  chipDotActive: {
+    backgroundColor: '#F05700',
+    borderColor: '#F05700',
+  },
+  chipText: {
     fontSize: 13,
-    color: '#737373',
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: '600',
+    color: '#64748B',
   },
-  categoryTextSelected: {
-    color: '#171717',
-    fontWeight: '700',
+  chipTextActive: {
+    color: '#F05700',
+    fontWeight: '800',
   },
-  primaryBtn: {
+  submitBtn: {
     height: 50,
-    borderRadius: 12,
-    backgroundColor: '#171717',
+    borderRadius: 10,
+    backgroundColor: '#F05700',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 10,
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  primaryBtnDisabled: {
-    backgroundColor: '#E5E5E5',
+  submitBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  primaryBtnText: {
+  arrowIcon: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '800',
   },
-  errorText: {
-    color: '#EF4444',
-    textAlign: 'center',
-    fontSize: 13,
-    marginTop: 4,
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

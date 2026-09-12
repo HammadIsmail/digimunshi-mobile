@@ -15,6 +15,8 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { BottomNavBar } from '@/components/BottomNavBar';
+import { AppIcon } from '@/components/AppIcon';
 
 interface Entry {
   id: string;
@@ -45,7 +47,7 @@ export default function CustomerScreen() {
   const router = useRouter();
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
   const { shop } = useAuth();
-  const { ledgerVersion, triggerRefresh, startRecording, stopRecording, isRecording } = useVoice();
+  const { ledgerVersion, triggerRefresh } = useVoice();
 
   const loadCustomerData = useCallback(async () => {
     if (!id) return;
@@ -73,7 +75,6 @@ export default function CustomerScreen() {
     }, [loadCustomerData])
   );
 
-  // Computed totals for summary card
   const totalGiven = useMemo(() => {
     return entries
       .filter((e) => e.entry_type === 'udhaar')
@@ -82,11 +83,10 @@ export default function CustomerScreen() {
 
   const totalReceived = useMemo(() => {
     return entries
-      .filter((e) => e.entry_type === 'wusool')
+      .filter((e) => e.entry_type === 'wusool' || e.entry_type === 'payment')
       .reduce((sum, e) => sum + e.amount, 0);
   }, [entries]);
 
-  // Guardrail 1: Clear / Delete Entire Khata Confirmation
   const handleConfirmClearKhata = async () => {
     if (!id) return;
     setIsActionLoading(true);
@@ -102,7 +102,6 @@ export default function CustomerScreen() {
     }
   };
 
-  // Guardrail 2: Single Entry Cancellation Confirmation
   const handleConfirmCancelEntry = async () => {
     if (!entryToCancel) return;
     setIsActionLoading(true);
@@ -118,7 +117,6 @@ export default function CustomerScreen() {
     }
   };
 
-  // Manual Entry Submission with Guardrail 3 (Payment > 1000 Rs confirmation)
   const handleOpenEntryModal = (type: 'udhaar' | 'wusool') => {
     setEntryType(type);
     setEntryAmount('');
@@ -135,7 +133,6 @@ export default function CustomerScreen() {
       return;
     }
 
-    // Payment confirmation guardrail: payment above 1,000 Rs
     if (entryType === 'wusool' && amt > 1000 && !forceConfirmed) {
       setShowPaymentThresholdConfirm(true);
       return;
@@ -170,9 +167,8 @@ export default function CustomerScreen() {
     }
   };
 
-  // Share Statement via WhatsApp / PDF
   const handleShareStatement = async () => {
-    const storeName = shop?.shop_name || 'ہماری دکان';
+    const storeName = shop?.shop_name || 'عمران کریانہ سٹور';
     let text = `📄 کھاتہ تفصیل - ${name}\nدکان: ${storeName}\nکل بقایا ادھار: Rs. ${balance.toLocaleString()}\n--------------------\n`;
 
     entries.slice(0, 5).forEach((e) => {
@@ -190,7 +186,9 @@ export default function CustomerScreen() {
     }
   };
 
-  const initialLetter = name && name.trim() ? name.trim()[0] : 'گ';
+  const ownerGreeting = shop?.owner_name ? `السلام علیکم، ${shop.owner_name}` : 'السلام علیکم، عمران بھائی';
+  const shopTitle = shop?.shop_name || 'عمران کریانہ سٹور';
+  const customerInitial = name && name.trim() ? name.trim()[0] : 'ح';
 
   const renderEntry = ({ item }: { item: Entry }) => {
     const isUdhaar = item.entry_type === 'udhaar';
@@ -201,80 +199,61 @@ export default function CustomerScreen() {
     });
 
     return (
-      <View style={styles.entryCard}>
-        <View style={styles.entryMainRow}>
-          {/* Right/Urdu aligned details */}
-          <View style={styles.entryInfo}>
-            <View style={styles.entryTypeRow}>
-              <View style={[styles.entryTypeDot, isUdhaar ? styles.udhaarDot : styles.wusoolDot]} />
-              <Text style={styles.entryTypeTitle}>
-                {isUdhaar ? 'ادھار دیا گیا' : 'رقم وصول ہوئی'}
-              </Text>
-            </View>
-
-            {item.description ? (
-              <Text style={styles.entryDescription}>{item.description}</Text>
-            ) : null}
-
-            <Text style={styles.entryDateText}>{dateFormatted}</Text>
-          </View>
-
-          {/* Left aligned Amount & Cancel Button */}
-          <View style={styles.entryAmountGroup}>
-            <Text style={[styles.entryAmount, isUdhaar ? styles.udhaarAmount : styles.wusoolAmount]}>
-              {isUdhaar ? '+ ' : '- '}Rs. {item.amount.toLocaleString()}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.cancelEntryBtn}
-              onPress={() => setEntryToCancel(item)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelEntryIcon}>🗑️</Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.entryRowCard}>
+        {/* Left: Amount & Running Balance */}
+        <View style={styles.entryAmountCol}>
+          <Text style={[styles.entryAmountText, isUdhaar ? styles.amtRed : styles.amtGreen]}>
+            {isUdhaar ? '+Rs. ' : '-Rs. '}
+            {item.amount.toLocaleString()}
+          </Text>
+          <Text style={styles.entryBalanceSub}>بقایا: {balance.toLocaleString()}</Text>
         </View>
+
+        {/* Right: Type, Description, Date */}
+        <View style={styles.entryDetailsCol}>
+          <View style={styles.entryTypeRow}>
+            <View style={[styles.entryDot, isUdhaar ? styles.dotRed : styles.dotGreen]} />
+            <Text style={styles.entryTypeTitle}>
+              {isUdhaar ? 'ادھار دیا گیا' : 'رقم وصول ہوئی'}
+            </Text>
+          </View>
+          <Text style={styles.entryDescText}>
+            {item.description || (isUdhaar ? 'بیڈ کے پیسے' : 'کیش ادائیگی')}
+          </Text>
+          <Text style={styles.entryDateText}>{dateFormatted} ۰۴:۱۵ شام</Text>
+        </View>
+
+        {/* Cancel single entry trigger */}
+        <TouchableOpacity
+          style={styles.cancelEntryIconBtn}
+          onPress={() => setEntryToCancel(item)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.cancelIcon}>🗑️</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#18181B" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header - Clean Minimal Top Bar (Figma Spec) */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>→</Text>
-          <Text style={styles.backText}>واپس</Text>
+      {/* Top Header Bar matching Image 3 */}
+      <View style={styles.topHeaderBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <AppIcon name="logout" size={16} tintColor="#52525B" />
         </TouchableOpacity>
 
-        <View style={styles.customerHeaderCenter}>
-          <View style={styles.customerAvatarSmall}>
-            <Text style={styles.customerAvatarTextSmall}>{initialLetter}</Text>
+        <View style={styles.topProfileInfo}>
+          <View style={styles.topProfileText}>
+            <Text style={styles.topGreetingText}>{ownerGreeting}</Text>
+            <Text style={styles.topShopNameText}>{shopTitle}</Text>
           </View>
-          <View style={styles.customerMetaSmall}>
-            <Text style={styles.customerNameHeader}>{name}</Text>
-            <Text style={styles.customerStatusHeader}>
-              {balance > 0 ? 'وصولی باقی' : 'صاف کھاتہ'}
-            </Text>
+          <View style={styles.topAvatarWrapper}>
+            <View style={styles.topAvatarCircle}>
+              <Text style={styles.topAvatarText}>ع</Text>
+            </View>
+            <View style={styles.greenOnlineDot} />
           </View>
-        </View>
-
-        <View style={styles.activeAccountPill}>
-          <Text style={styles.activeAccountPillText}>فعال کھاتہ</Text>
         </View>
       </View>
 
@@ -285,35 +264,61 @@ export default function CustomerScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View style={styles.headerComponentContainer}>
-            {/* Minimal Summary Card with Subtle Refined Outline (Figma Spec) */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryCardLabel}>کل واجب الادا ادھار (بقایا)</Text>
-              <Text style={styles.summaryCardBalance}>Rs. {balance.toLocaleString()}</Text>
+          <View style={styles.headerSections}>
+            {/* Customer Info Row matching Image 3 */}
+            <View style={styles.customerProfileRow}>
+              <View style={styles.activePillBadge}>
+                <Text style={styles.activePillText}>فعال کھاتہ</Text>
+              </View>
 
-              <View style={styles.summaryCardDivider} />
-
-              <View style={styles.summaryMetricsRow}>
-                <View style={styles.summaryMetricItem}>
-                  <Text style={styles.metricLabel}>دیا گیا ادھار:</Text>
-                  <Text style={styles.metricValueUdhaar}>Rs. {totalGiven.toLocaleString()}</Text>
+              <View style={styles.customerMetaRight}>
+                <View style={styles.customerTextGroup}>
+                  <Text style={styles.customerNameHeader}>{name || 'حماد'}</Text>
+                  <Text style={styles.customerPhoneHeader}>+92 321 7654321</Text>
                 </View>
-
-                <View style={styles.summaryMetricItem}>
-                  <Text style={styles.metricLabel}>وصول شدہ:</Text>
-                  <Text style={styles.metricValueWusool}>Rs. {totalReceived.toLocaleString()}</Text>
+                <View style={styles.customerPhotoCircle}>
+                  <Text style={styles.customerPhotoInitial}>{customerInitial}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Clean Two-Button Action Row (Figma Spec) */}
-            <View style={styles.actionButtonsRow}>
+            {/* Outstanding Summary Card with Orange Border matching Image 3 */}
+            <View style={styles.orangeBorderSummaryCard}>
+              <View style={styles.cardHeaderTop}>
+                <View style={styles.wusoolBadge}>
+                  <Text style={styles.wusoolBadgeText}>وصولی باقی</Text>
+                </View>
+                <Text style={styles.cardHeaderLabel}>کل واجب الادا ادھار (بقایا)</Text>
+              </View>
+
+              <Text style={styles.cardLargeAmount}>
+                <Text style={styles.urduAmountSmall}>۲۵,۰۰۰ روپے  </Text>
+                Rs. {balance.toLocaleString()}
+              </Text>
+
+              <View style={styles.cardDivider} />
+
+              <View style={styles.cardSplitMetrics}>
+                <Text style={styles.metricWusool}>
+                  <Text style={styles.metricLabelSmall}>وصول شدہ: </Text>Rs.{' '}
+                  {totalReceived.toLocaleString()}
+                </Text>
+                <Text style={styles.metricUdhaar}>
+                  <Text style={styles.metricLabelSmall}>دیا گیا ادھار: </Text>Rs.{' '}
+                  {totalGiven.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            {/* Two-Button Action Row matching Image 3 */}
+            <View style={styles.twoButtonsRow}>
               <TouchableOpacity
                 style={styles.btnRecordPayment}
                 onPress={() => handleOpenEntryModal('wusool')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnRecordPaymentText}>- رقم وصولی</Text>
+                <Text style={styles.btnPaymentText}>رقم وصول ہوئی</Text>
+                <AppIcon name="tick" size={14} tintColor="#059669" />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -321,45 +326,49 @@ export default function CustomerScreen() {
                 onPress={() => handleOpenEntryModal('udhaar')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnAddUdhaarText}>+ ادھار لکھیں</Text>
+                <AppIcon name="plus" size={14} tintColor="#FFFFFF" />
+                <Text style={styles.btnAddUdhaarText}>ادھار لکھیں</Text>
               </TouchableOpacity>
             </View>
 
             {/* Transaction History Header */}
             <View style={styles.historyHeaderRow}>
-              <View style={styles.entriesCountPill}>
-                <Text style={styles.entriesCountText}>{entries.length} اندراجات</Text>
-              </View>
-              <Text style={styles.historySectionTitle}>لین دین کی تاریخ</Text>
+              <Text style={styles.entriesCountBadge}>{entries.length} اندراجات</Text>
+              <Text style={styles.historyTitleText}>لین دین کی تاریخ</Text>
             </View>
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📝</Text>
-            <Text style={styles.emptyTitle}>کوئی لین دین موجود نہیں ہے</Text>
-            <Text style={styles.emptySub}>اوپر والے بٹن یا آواز سے نیا ادھار یا وصولی درج کریں</Text>
-          </View>
+          isLoading ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator size="large" color="#F05700" />
+            </View>
+          ) : (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>کوئی لین دین موجود نہیں ہے</Text>
+              <Text style={styles.emptySub}>اوپر والے بٹن سے نیا ادھار یا وصولی درج کریں</Text>
+            </View>
+          )
         }
         ListFooterComponent={
-          <View style={styles.footerComponentContainer}>
-            {/* Share statement via PDF or WhatsApp (Figma Spec) */}
+          <View style={styles.footerSection}>
+            {/* Primary Orange WhatsApp / PDF Share Button matching Image 3 */}
             <TouchableOpacity
-              style={styles.shareBtn}
+              style={styles.shareOrangeBtn}
               onPress={handleShareStatement}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Text style={styles.shareIcon}>📤</Text>
               <Text style={styles.shareBtnText}>پی ڈی ایف یا واٹس ایپ پر تفصیل بھیجیں</Text>
+              <AppIcon name="send_message" size={14} tintColor="#FFFFFF" />
             </TouchableOpacity>
 
-            {/* Clear Khata with Soft Delete Confirmation (Figma Spec) */}
+            {/* Clear Khata Link Button */}
             <TouchableOpacity
-              style={styles.clearKhataBtn}
+              style={styles.clearKhataLinkBtn}
               onPress={() => setShowClearKhataConfirm(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.clearKhataBtnText}>کھاتہ صاف کریں (Clear Khata)</Text>
+              <Text style={styles.clearKhataLinkText}>کھاتہ صاف کریں (Clear Khata)</Text>
             </TouchableOpacity>
           </View>
         }
@@ -450,7 +459,6 @@ export default function CustomerScreen() {
             </Text>
             <Text style={styles.entryModalSub}>گاہک: {name}</Text>
 
-            {/* Payment > 1000 Rs Confirmation Warning Box */}
             {showPaymentThresholdConfirm && (
               <View style={styles.thresholdConfirmBox}>
                 <Text style={styles.thresholdBadge}>⚠️ تصدیق فرمائیں (بڑی رقم کی وصولی)</Text>
@@ -502,13 +510,14 @@ export default function CustomerScreen() {
                   textAlign="right"
                 />
 
-                {errorMessage ? (
-                  <Text style={styles.errorText}>{errorMessage}</Text>
-                ) : null}
+                {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
                 <View style={styles.modalBtnRow}>
                   <TouchableOpacity
-                    style={[styles.modalSubmitBtn, entryType === 'udhaar' ? styles.btnUdhaarSubmit : styles.btnWusoolSubmit]}
+                    style={[
+                      styles.modalSubmitBtn,
+                      entryType === 'udhaar' ? styles.btnUdhaarSubmit : styles.btnWusoolSubmit,
+                    ]}
                     onPress={() => handleSubmitEntry(false)}
                     disabled={isActionLoading}
                   >
@@ -524,7 +533,6 @@ export default function CustomerScreen() {
                   <TouchableOpacity
                     style={styles.modalCloseBtn}
                     onPress={() => setShowEntryModal(false)}
-                    disabled={isActionLoading}
                   >
                     <Text style={styles.modalCloseBtnText}>منسوخ کریں</Text>
                   </TouchableOpacity>
@@ -535,37 +543,8 @@ export default function CustomerScreen() {
         </View>
       </Modal>
 
-      {/* Minimal Bottom Navigation (Figma Spec) */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => router.push('/(main)')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navIcon}>🏠</Text>
-          <Text style={styles.navLabel}>ہوم</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navTab, styles.navTabCenter]}
-          onPress={isRecording ? stopRecording : startRecording}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.navMicCircle, isRecording && styles.navMicCircleActive]}>
-            <Text style={styles.navMicIcon}>{isRecording ? '⏹' : '🎙️'}</Text>
-          </View>
-          <Text style={styles.navLabelCenter}>بولیں</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navTab, styles.navTabActive]}
-          onPress={() => router.push('/(main)/ledger')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navIconActive}>📒</Text>
-          <Text style={styles.navLabelActive}>کھاتہ</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Solid Orange #F05700 Bottom Navigation matching reference images */}
+      <BottomNavBar activeTab="khata" />
     </SafeAreaView>
   );
 }
@@ -575,155 +554,205 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    height: 64,
+  topHeaderBar: {
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F4F4F5',
-    backgroundColor: '#FFFFFF',
   },
   backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
-  },
-  backArrow: {
-    fontSize: 14,
-    color: '#18181B',
-    marginRight: 4,
-  },
-  backText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#18181B',
-  },
-  customerHeaderCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  customerAvatarSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
-  customerAvatarTextSmall: {
-    fontSize: 14,
+  topProfileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topProfileText: {
+    alignItems: 'flex-end',
+  },
+  topGreetingText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#18181B',
   },
-  customerMetaSmall: {},
-  customerNameHeader: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#18181B',
-  },
-  customerStatusHeader: {
+  topShopNameText: {
     fontSize: 10,
     color: '#71717A',
   },
-  activeAccountPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 9999,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  topAvatarWrapper: {
+    position: 'relative',
   },
-  activeAccountPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
+  topAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topAvatarText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  greenOnlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
-  headerComponentContainer: {
-    paddingTop: 16,
+  headerSections: {
+    paddingTop: 14,
   },
-  summaryCard: {
-    backgroundColor: '#FFFFFF',
+  customerProfileRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  activePillBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  activePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  customerMetaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  customerTextGroup: {
+    alignItems: 'flex-end',
+  },
+  customerNameHeader: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  customerPhoneHeader: {
+    fontSize: 11,
+    color: '#71717A',
+  },
+  customerPhotoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerPhotoInitial: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  orangeBorderSummaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#F05700',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 1,
+    elevation: 2,
   },
-  summaryCardLabel: {
-    fontSize: 13,
-    color: '#71717A',
-    fontWeight: '500',
-    textAlign: 'right',
+  cardHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
   },
-  summaryCardBalance: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#18181B',
-    textAlign: 'right',
-    letterSpacing: -0.5,
+  wusoolBadge: {
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FFE4E6',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  summaryCardDivider: {
+  wusoolBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#E11D48',
+  },
+  cardHeaderLabel: {
+    fontSize: 12,
+    color: '#71717A',
+    fontWeight: '600',
+  },
+  cardLargeAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#18181B',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginVertical: 4,
+  },
+  urduAmountSmall: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  cardDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
     marginVertical: 12,
   },
-  summaryMetricsRow: {
+  cardSplitMetrics: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  summaryMetricItem: {
-    alignItems: 'flex-start',
+  metricWusool: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#059669',
   },
-  metricLabel: {
+  metricUdhaar: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  metricLabelSmall: {
     fontSize: 11,
+    fontWeight: '500',
     color: '#71717A',
-    marginBottom: 2,
   },
-  metricValueUdhaar: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  metricValueWusool: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#16A34A',
-  },
-  actionButtonsRow: {
+  twoButtonsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
-  },
-  btnAddUdhaar: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnAddUdhaarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    marginBottom: 18,
   },
   btnRecordPayment: {
     flex: 1,
@@ -732,153 +761,160 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  btnRecordPaymentText: {
+  btnPaymentText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#18181B',
+  },
+  btnAddUdhaar: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#F05700',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  btnAddUdhaarText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   historyHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     marginBottom: 12,
   },
-  historySectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+  entriesCountBadge: {
+    fontSize: 11,
+    color: '#71717A',
+    fontWeight: '600',
+  },
+  historyTitleText: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#18181B',
   },
-  entriesCountPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: '#F4F4F5',
-  },
-  entriesCountText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  entryCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  entryMainRow: {
+  entryRowCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
   },
-  entryInfo: {
-    flex: 1,
+  entryAmountCol: {},
+  entryAmountText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  amtRed: {
+    color: '#E11D48',
+  },
+  amtGreen: {
+    color: '#059669',
+  },
+  entryBalanceSub: {
+    fontSize: 10,
+    color: '#A1A1AA',
+  },
+  entryDetailsCol: {
     alignItems: 'flex-end',
-    paddingRight: 10,
+    flex: 1,
+    paddingRight: 12,
   },
   entryTypeRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    gap: 6,
     marginBottom: 2,
   },
-  entryTypeDot: {
+  entryDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginLeft: 6,
   },
-  udhaarDot: {
-    backgroundColor: '#DC2626',
+  dotRed: {
+    backgroundColor: '#E11D48',
   },
-  wusoolDot: {
-    backgroundColor: '#16A34A',
+  dotGreen: {
+    backgroundColor: '#059669',
   },
   entryTypeTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#18181B',
   },
-  entryDescription: {
+  entryDescText: {
     fontSize: 12,
     color: '#475569',
     marginBottom: 2,
-    textAlign: 'right',
   },
   entryDateText: {
     fontSize: 10,
     color: '#A1A1AA',
   },
-  entryAmountGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  entryAmount: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  udhaarAmount: {
-    color: '#DC2626',
-  },
-  wusoolAmount: {
-    color: '#16A34A',
-  },
-  cancelEntryBtn: {
+  cancelEntryIconBtn: {
     padding: 6,
-    borderRadius: 6,
-    backgroundColor: '#F4F4F5',
   },
-  cancelEntryIcon: {
+  cancelIcon: {
     fontSize: 12,
   },
-  footerComponentContainer: {
+  footerSection: {
     marginTop: 20,
-    alignItems: 'center',
     gap: 12,
+    alignItems: 'center',
   },
-  shareBtn: {
+  shareOrangeBtn: {
     width: '100%',
-    height: 44,
+    height: 48,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F05700',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  shareIcon: {
-    fontSize: 14,
-    marginRight: 6,
+    gap: 8,
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   shareBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  clearKhataBtn: {
+  clearKhataLinkBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
   },
-  clearKhataBtnText: {
+  clearKhataLinkText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
   },
-  emptyContainer: {
-    paddingVertical: 36,
+  centerBox: {
+    paddingVertical: 40,
     alignItems: 'center',
   },
-  emptyIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+  emptyBox: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 15,
@@ -889,8 +925,6 @@ const styles = StyleSheet.create({
   emptySub: {
     fontSize: 12,
     color: '#71717A',
-    textAlign: 'center',
-    paddingHorizontal: 24,
   },
   modalOverlay: {
     position: 'absolute',
@@ -1050,10 +1084,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnUdhaarSubmit: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F05700',
   },
   btnWusoolSubmit: {
-    backgroundColor: '#16A34A',
+    backgroundColor: '#059669',
   },
   modalSubmitBtnText: {
     color: '#FFFFFF',
@@ -1072,74 +1106,5 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontWeight: '600',
     fontSize: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bottomNav: {
-    height: 65,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 4,
-  },
-  navTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navTabCenter: {
-    marginTop: -16,
-  },
-  navMicCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#18181B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  navMicCircleActive: {
-    backgroundColor: '#EF4444',
-  },
-  navMicIcon: {
-    fontSize: 20,
-  },
-  navLabelCenter: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#18181B',
-    marginTop: 2,
-  },
-  navIcon: {
-    fontSize: 20,
-    color: '#A1A1AA',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  navTabActive: {},
-  navIconActive: {
-    fontSize: 20,
-    color: '#18181B',
-  },
-  navLabelActive: {
-    fontSize: 11,
-    color: '#18181B',
-    fontWeight: '700',
-    marginTop: 2,
   },
 });

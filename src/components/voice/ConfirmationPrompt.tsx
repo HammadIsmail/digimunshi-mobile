@@ -148,7 +148,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#F05700',
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cancelButton: {
     backgroundColor: '#F1F5F9',

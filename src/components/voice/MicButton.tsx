@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { useVoice } from '@/contexts/VoiceContext';
+import { AppIcon } from '@/components/AppIcon';
 
 const WAVE_HEIGHTS = [14, 28, 42, 20, 50, 28, 14, 32, 50, 28, 14, 28, 42, 10, 28, 32];
 
@@ -97,23 +98,23 @@ export function MicButton() {
 
   return (
     <View style={styles.wrapper}>
-      {/* Waveform Soundwave Bars */}
+      {/* Waveform Soundwave Bars Left */}
       <View style={styles.waveRow}>
-        {WAVE_HEIGHTS.slice(0, 8).map((h, i) => (
+        {WAVE_HEIGHTS.slice(0, 7).map((h, i) => (
           <Animated.View
             key={`left-${i}`}
             style={[
               styles.waveBar,
               {
                 height: h,
-                backgroundColor: isRecording ? '#10B981' : '#E5E7EB',
+                backgroundColor: isRecording ? '#F05700' : '#E5E7EB',
                 transform: [{ scaleY: isRecording ? waveAnims[i] : 1 }],
               },
             ]}
           />
         ))}
 
-        {/* Center Mic Trigger (80x80 Figma Spec) */}
+        {/* Center Mic Trigger (White with #F05700 Orange Border matching reference image) */}
         <TouchableOpacity
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -136,22 +137,25 @@ export function MicButton() {
               },
             ]}
           >
-            <Text style={styles.micIcon}>
-              {isProcessing ? '⏳' : isRecording ? '🔴' : '🎙️'}
-            </Text>
+            <AppIcon
+              name="speaker_big"
+              width={26}
+              height={34}
+              tintColor={isRecording ? '#FFFFFF' : '#F05700'}
+            />
           </Animated.View>
         </TouchableOpacity>
 
-        {/* Right Waveform Bars */}
-        {WAVE_HEIGHTS.slice(8).map((h, i) => (
+        {/* Waveform Soundwave Bars Right */}
+        {WAVE_HEIGHTS.slice(7, 14).map((h, i) => (
           <Animated.View
             key={`right-${i}`}
             style={[
               styles.waveBar,
               {
                 height: h,
-                backgroundColor: isRecording ? '#10B981' : '#E5E7EB',
-                transform: [{ scaleY: isRecording ? waveAnims[8 + i] : 1 }],
+                backgroundColor: isRecording ? '#F05700' : '#E5E7EB',
+                transform: [{ scaleY: isRecording ? waveAnims[7 + i] : 1 }],
               },
             ]}
           />
@@ -165,44 +169,40 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 12,
+    marginVertical: 8,
   },
   waveRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   waveBar: {
     width: 3.5,
     borderRadius: 2,
   },
   micButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#18181B',
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 12,
-    borderWidth: 1.5,
-    borderColor: '#27272A',
-    shadowColor: '#000',
+    borderWidth: 2,
+    borderColor: '#F05700',
+    shadowColor: '#F05700',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   micButtonActive: {
-    backgroundColor: '#EF4444',
-    borderColor: '#DC2626',
-    shadowColor: '#EF4444',
+    backgroundColor: '#F05700',
+    borderColor: '#F05700',
     shadowOpacity: 0.4,
   },
   micButtonProcessing: {
-    backgroundColor: '#52525B',
-    borderColor: '#71717A',
-  },
-  micIcon: {
-    fontSize: 32,
+    backgroundColor: '#F3F4F6',
+    borderColor: '#9CA3AF',
   },
 });

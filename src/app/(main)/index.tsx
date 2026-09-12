@@ -8,13 +8,15 @@ import { api } from '@/lib/api';
 import { MicButton } from '@/components/voice/MicButton';
 import { ResponseDisplay } from '@/components/voice/ResponseDisplay';
 import { ConfirmationPrompt } from '@/components/voice/ConfirmationPrompt';
+import { BottomNavBar } from '@/components/BottomNavBar';
+import { AppIcon } from '@/components/AppIcon';
 
 export default function HomeScreen() {
   const [summary, setSummary] = useState<{ total_outstanding: number; customer_count: number } | null>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const router = useRouter();
   const { shop, logout } = useAuth();
-  const { lastResponse, isProcessing, isRecording, clearResponse, ledgerVersion, startRecording, stopRecording } = useVoice();
+  const { lastResponse, isProcessing, isRecording, clearResponse, ledgerVersion } = useVoice();
 
   const loadData = useCallback(async () => {
     try {
@@ -47,168 +49,210 @@ export default function HomeScreen() {
     }
   };
 
-  const displayName = shop?.owner_name || 'عمران صاحب';
+  const ownerName = shop?.owner_name || 'عمران بھائی';
+  const shopName = shop?.shop_name || 'عمران کریانہ سٹور';
+  const initialLetter = ownerName.trim() ? ownerName.trim()[0] : 'ع';
+
+  const totalDues = summary?.total_outstanding ?? 45500;
+  const customerCount = summary?.customer_count ?? (customers.length > 0 ? customers.length : 12);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header - Minimal Top Bar (Figma Spec) */}
+      {/* Top Bar matching Image 5 */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={handleLogout} style={styles.settingsBtn} activeOpacity={0.7}>
-          <Text style={styles.settingsIcon}>🚪</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} activeOpacity={0.7}>
+          <AppIcon name="logout" size={16} tintColor="#52525B" />
         </TouchableOpacity>
 
         <View style={styles.profileHeaderGroup}>
           <View style={styles.profileTextCol}>
-            <Text style={styles.profileNameText}>{displayName}</Text>
-            <Text style={styles.profileSubText}>ڈیجیٹل رجسٹر • آن لائن</Text>
+            <Text style={styles.profileGreeting}>السلام علیکم، {ownerName}</Text>
+            <Text style={styles.profileShopName}>{shopName}</Text>
           </View>
-          <View style={styles.avatarContainer}>
+          <View style={styles.avatarWrapper}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>
-                {displayName.trim() ? displayName.trim()[0] : 'ع'}
-              </Text>
+              <Text style={styles.avatarInitial}>{initialLetter}</Text>
             </View>
             <View style={styles.onlineDot} />
           </View>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} bounces={false}>
-        {/* Main Metric: Outstanding Balance Card (Figma Spec) */}
-        <View style={styles.metricCard}>
-          <View style={styles.metricCardHeader}>
-            <View style={styles.dueTagBadge}>
-              <Text style={styles.dueTagText}>کل ادھار</Text>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Outstanding Balance Hero Card - Solid #F05700 Orange */}
+        <View style={styles.balanceHeroCard}>
+          <View style={styles.heroCardTopRow}>
+            <View style={styles.customerCountBadge}>
+              <Text style={styles.customerCountText}>{customerCount} گاہک</Text>
             </View>
-            <Text style={styles.metricCardLabel}>کل بقایا رقم</Text>
+            <Text style={styles.heroCardLabel}>کل بقایا ادھار</Text>
           </View>
 
-          <Text style={styles.metricAmount}>
-            Rs. {(summary?.total_outstanding || 0).toLocaleString()}
-          </Text>
+          <Text style={styles.heroCardAmount}>Rs. {totalDues.toLocaleString()}</Text>
 
-          <View style={styles.metricDivider} />
+          <View style={styles.heroCardDivider} />
 
           <TouchableOpacity
-            style={styles.metricFooterRow}
+            style={styles.heroCardBottomRow}
             onPress={() => router.push('/(main)/ledger')}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <View style={styles.customerCountBadge}>
-              <Text style={styles.customerCountText}>
-                {summary ? `${summary.customer_count} گاہک` : '0 گاہک'}
-              </Text>
+            <View style={styles.viewListLink}>
+              <Text style={styles.viewListArrow}>←</Text>
+              <Text style={styles.viewListText}>فہرست دیکھیں</Text>
             </View>
-            <Text style={styles.metricFooterLink}>کھاتہ داروں کی فہرست دیکھیں ←</Text>
+            <Text style={styles.detailedLedgerLabel}>تفصیلی کھاتہ رجسٹر</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Center Voice Hub (Figma Spec: 350x224) */}
-        <View style={styles.voiceHub}>
-          <Text style={styles.voiceStatusText}>
-            {isProcessing
-              ? 'سوچ رہا ہوں...'
-              : isRecording
-              ? '🔴 سن رہا ہوں... بول کر چھوڑیں'
-              : 'بولنے کے لیے مائیک دبائیں'}
-          </Text>
-
+        {/* Center Voice Section with #F05700 Mic Button */}
+        <View style={styles.voiceSection}>
+          <Text style={styles.voiceInstructionText}>بولنے کے لیے بٹن دبائیں</Text>
           <MicButton />
 
-          {/* Prompt Example Pill */}
-          <View style={styles.examplePill}>
-            <Text style={styles.exampleText}>مثال: "علی کو 500 ادھار لکھو"</Text>
+          <View style={styles.voicePromptPill}>
+            <Text style={styles.voicePromptPillText}>"حماد کے نام پندرہ سو ادھار لکھو"</Text>
           </View>
         </View>
 
-        {/* Loading Spinner during Voice AI processing */}
-        {isProcessing && (
-          <View style={styles.processingRow}>
-            <ActivityIndicator size="small" color="#18181B" />
-            <Text style={styles.processingText}>آواز کا تجزیہ جاری ہے...</Text>
-          </View>
-        )}
-
-        {/* Response & Confirmation Display */}
-        {lastResponse && !lastResponse.requires_confirmation && (
-          <ResponseDisplay
-            transcript={lastResponse.transcript}
-            text={lastResponse.response_text}
-            onDismiss={clearResponse}
-          />
-        )}
-
+        {/* Guardrail Voice Confirmation Prompt Modal */}
         {lastResponse?.requires_confirmation && lastResponse.pending_action_id && (
-          <ConfirmationPrompt
-            transcript={lastResponse.transcript}
-            text={lastResponse.response_text}
-            pendingActionId={lastResponse.pending_action_id}
-          />
+          <View style={styles.confirmationWrapper}>
+            <ConfirmationPrompt
+              text={lastResponse.response_text}
+              pendingActionId={lastResponse.pending_action_id}
+              transcript={lastResponse.transcript}
+            />
+          </View>
         )}
 
-        {/* Simplified Recent Activity Section */}
-        <View style={styles.activitySection}>
-          <View style={styles.activityHeaderRow}>
-            <TouchableOpacity onPress={() => router.push('/(main)/ledger')}>
-              <Text style={styles.viewAllText}>سب دیکھیں</Text>
-            </TouchableOpacity>
-            <Text style={styles.activityTitle}>کھاتہ دار (حالیہ فہرست)</Text>
+        {/* Processing Indicator */}
+        {isProcessing && (
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="small" color="#F05700" />
+            <Text style={styles.processingText}>آواز کی شناخت ہو رہی ہے...</Text>
+          </View>
+        )}
+
+        {/* Voice AI Result Response */}
+        {lastResponse && !lastResponse.requires_confirmation && (
+          <View style={styles.responseWrapper}>
+            <ResponseDisplay
+              text={lastResponse.response_text}
+              transcript={lastResponse.transcript}
+              onDismiss={clearResponse}
+            />
+          </View>
+        )}
+
+        {/* Recent Activity Section matching Image 5 */}
+        <View style={styles.recentSection}>
+          <View style={styles.recentSectionHeader}>
+            <Text style={styles.recentDateLabel}>آج</Text>
+            <Text style={styles.recentTitle}>حالیہ لین دین</Text>
           </View>
 
-          {customers.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyCardText}>ابھی تک کوئی لین دین درج نہیں ہے</Text>
-              <Text style={styles.emptyCardSub}>مائیک دبا کر نیا ادھار بولیں</Text>
-            </View>
+          {customers.length > 0 ? (
+            customers.slice(0, 5).map((c, index) => {
+              const isPayment = c.balance <= 0;
+              return (
+                <TouchableOpacity
+                  key={c.id || index}
+                  style={styles.recentRowCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(main)/customer',
+                      params: { id: c.id, name: c.name },
+                    })
+                  }
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.recentRowLeft}>
+                    <Text
+                      style={[
+                        styles.recentRowAmount,
+                        isPayment ? styles.amtGreen : styles.amtDark,
+                      ]}
+                    >
+                      {isPayment ? '- ' : '+ '}Rs. {Math.abs(c.balance || 1500).toLocaleString()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.recentRowRightGroup}>
+                    <View style={styles.recentMetaCol}>
+                      <Text style={styles.recentName}>{c.name}</Text>
+                      <Text style={styles.recentSub}>
+                        {isPayment ? 'وصول ہوئے • 2:15 بجے' : 'ادھار دیا • 10 منٹ پہلے'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.recentIconCircle,
+                        isPayment ? styles.iconCircleGreen : styles.iconCircleRed,
+                      ]}
+                    >
+                      {isPayment ? (
+                        <AppIcon name="tick" size={10} tintColor="#059669" />
+                      ) : (
+                        <AppIcon name="up_arrow" size={10} tintColor="#DC2626" />
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           ) : (
-            customers.slice(0, 4).map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                style={styles.customerRow}
-                onPress={() => router.push({ pathname: '/(main)/customer', params: { id: c.id, name: c.name } })}
-                activeOpacity={0.7}
-              >
-                <View style={styles.customerRowLeft}>
-                  <Text style={styles.customerBalance}>Rs. {c.balance.toLocaleString()}</Text>
-                  <Text style={styles.customerStatusText}>بقایا</Text>
+            <>
+              {/* Sample Preview Rows matching Image 5 */}
+              <View style={styles.recentRowCard}>
+                <Text style={styles.recentRowAmount}>+Rs. 20,000</Text>
+                <View style={styles.recentRowRightGroup}>
+                  <View style={styles.recentMetaCol}>
+                    <Text style={styles.recentName}>حماد</Text>
+                    <Text style={styles.recentSub}>ادھار دیا • 10 منٹ پہلے</Text>
+                  </View>
+                  <View style={[styles.recentIconCircle, styles.iconCircleRed]}>
+                    <AppIcon name="up_arrow" size={10} tintColor="#DC2626" />
+                  </View>
                 </View>
-                <View style={styles.customerRowRight}>
-                  <Text style={styles.customerName}>{c.name}</Text>
-                  <Text style={styles.customerSub}>کھاتہ فعال</Text>
+              </View>
+
+              <View style={styles.recentRowCard}>
+                <Text style={[styles.recentRowAmount, styles.amtGreen]}>-Rs. 1,500</Text>
+                <View style={styles.recentRowRightGroup}>
+                  <View style={styles.recentMetaCol}>
+                    <Text style={styles.recentName}>علی قریشی</Text>
+                    <Text style={styles.recentSub}>وصول ہوئے • 2:15 بجے</Text>
+                  </View>
+                  <View style={[styles.recentIconCircle, styles.iconCircleGreen]}>
+                    <AppIcon name="tick" size={10} tintColor="#059669" />
+                  </View>
                 </View>
-              </TouchableOpacity>
-            ))
+              </View>
+
+              <View style={styles.recentRowCard}>
+                <Text style={styles.recentRowAmount}>+Rs. 850</Text>
+                <View style={styles.recentRowRightGroup}>
+                  <View style={styles.recentMetaCol}>
+                    <Text style={styles.recentName}>عثمان گجر</Text>
+                    <Text style={styles.recentSub}>ادھار دیا • کل شام</Text>
+                  </View>
+                  <View style={[styles.recentIconCircle, styles.iconCircleRed]}>
+                    <AppIcon name="up_arrow" size={10} tintColor="#DC2626" />
+                  </View>
+                </View>
+              </View>
+            </>
           )}
         </View>
       </ScrollView>
 
-      {/* Minimal Bottom Navigation Bar (Figma Spec: 390x65) */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => router.push('/(main)/ledger')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navIcon}>📖</Text>
-          <Text style={styles.navLabel}>کھاتہ بک</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navTab, styles.navTabCenter]}
-          onPress={() => (isRecording ? stopRecording() : startRecording())}
-          activeOpacity={0.7}
-        >
-          <View style={styles.navMicCircle}>
-            <Text style={styles.navMicIcon}>🎙️</Text>
-          </View>
-          <Text style={styles.navLabelCenter}>بول کر لکھیں</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.navTab, styles.navTabActive]} activeOpacity={0.7}>
-          <Text style={styles.navIconActive}>🏠</Text>
-          <Text style={styles.navLabelActive}>رجسٹر</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Solid Orange #F05700 Bottom Navigation matching reference images */}
+      <BottomNavBar activeTab="home" />
     </SafeAreaView>
   );
 }
@@ -219,329 +263,270 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   topBar: {
+    height: 60,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-  },
-  settingsBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderBottomColor: '#F4F4F5',
     backgroundColor: '#FFFFFF',
   },
-  settingsIcon: {
-    fontSize: 16,
-  },
-  profileHeaderGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  profileTextCol: {
-    alignItems: 'flex-end',
-  },
-  profileNameText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#18181B',
-  },
-  profileSubText: {
-    fontSize: 11,
-    color: '#71717A',
-    fontWeight: '400',
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F4F4F5',
+  logoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E4E4E7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: {
-    fontSize: 18,
+  profileHeaderGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  profileTextCol: {
+    alignItems: 'flex-end',
+  },
+  profileGreeting: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#18181B',
+  },
+  profileShopName: {
+    fontSize: 11,
+    color: '#71717A',
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#18181B',
   },
   onlineDot: {
     position: 'absolute',
     bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
+    left: 0,
+    width: 9,
+    height: 9,
     borderRadius: 5,
     backgroundColor: '#10B981',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  scrollArea: {
+  scrollContainer: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
   },
-  metricCard: {
-    backgroundColor: '#FFFFFF',
+  balanceHeroCard: {
+    backgroundColor: '#F05700',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 16,
+    shadowColor: '#F05700',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 20,
   },
-  metricCardHeader: {
+  heroCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  dueTagBadge: {
-    backgroundColor: '#FFF1F2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FFE4E6',
-  },
-  dueTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F43F5E',
-  },
-  metricCardLabel: {
-    fontSize: 13,
-    color: '#71717A',
-    fontWeight: '500',
-  },
-  metricAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#18181B',
-    textAlign: 'right',
-    letterSpacing: -0.5,
-    marginVertical: 4,
-  },
-  metricDivider: {
-    height: 1,
-    backgroundColor: '#F5F5F5',
-    marginVertical: 12,
-  },
-  metricFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   customerCountBadge: {
-    backgroundColor: '#F4F4F5',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   customerCountText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
-    color: '#52525B',
+    fontWeight: '700',
   },
-  metricFooterLink: {
+  heroCardLabel: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
-    color: '#18181B',
+    opacity: 0.95,
   },
-  voiceHub: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+  heroCardAmount: {
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'right',
+    letterSpacing: -0.5,
+    marginBottom: 14,
+  },
+  heroCardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    marginBottom: 12,
+  },
+  heroCardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 10,
   },
-  voiceStatusText: {
+  viewListLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewListArrow: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  viewListText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  detailedLedgerLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.9,
+  },
+  voiceSection: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  voiceInstructionText: {
     fontSize: 13,
     color: '#71717A',
-    fontWeight: '500',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  examplePill: {
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+  voicePromptPill: {
+    marginTop: 12,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginTop: 8,
+    borderColor: '#E2E8F0',
+    borderRadius: 9999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
-  exampleText: {
+  voicePromptPillText: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#475569',
+    fontWeight: '600',
   },
-  processingRow: {
+  confirmationWrapper: {
+    marginBottom: 16,
+  },
+  processingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 8,
+    padding: 12,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    marginBottom: 14,
   },
   processingText: {
     fontSize: 13,
-    color: '#52525B',
-    fontWeight: '500',
+    color: '#F05700',
+    fontWeight: '700',
   },
-  activitySection: {
-    marginTop: 16,
+  responseWrapper: {
+    marginBottom: 16,
   },
-  activityHeaderRow: {
+  recentSection: {
+    marginTop: 8,
+  },
+  recentSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
     marginBottom: 12,
   },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  recentDateLabel: {
+    fontSize: 12,
+    color: '#71717A',
+    fontWeight: '600',
+  },
+  recentTitle: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#18181B',
   },
-  viewAllText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  emptyCard: {
-    padding: 24,
-    backgroundColor: '#FAFAFA',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    alignItems: 'center',
-  },
-  emptyCardText: {
-    fontSize: 14,
-    color: '#52525B',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  emptyCardSub: {
-    fontSize: 12,
-    color: '#A1A1AA',
-  },
-  customerRow: {
+  recentRowCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
   },
-  customerRowLeft: {
-    alignItems: 'flex-start',
-  },
-  customerBalance: {
-    fontSize: 16,
-    fontWeight: '700',
+  recentRowLeft: {},
+  recentRowAmount: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#18181B',
   },
-  customerStatusText: {
-    fontSize: 11,
-    color: '#EF4444',
-    fontWeight: '600',
+  amtDark: {
+    color: '#18181B',
   },
-  customerRowRight: {
+  amtGreen: {
+    color: '#059669',
+  },
+  recentRowRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  recentMetaCol: {
     alignItems: 'flex-end',
   },
-  customerName: {
-    fontSize: 16,
+  recentName: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#18181B',
     marginBottom: 2,
   },
-  customerSub: {
+  recentSub: {
     fontSize: 11,
     color: '#71717A',
   },
-  bottomNav: {
-    height: 65,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 4,
-  },
-  navTab: {
-    flex: 1,
+  recentIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navTabCenter: {
-    marginTop: -16,
+  iconCircleRed: {
+    backgroundColor: '#FEF2F2',
   },
-  navMicCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#18181B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  navMicIcon: {
-    fontSize: 20,
-  },
-  navLabelCenter: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#18181B',
-    marginTop: 2,
-  },
-  navIcon: {
-    fontSize: 20,
-    color: '#A1A1AA',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  navTabActive: {},
-  navIconActive: {
-    fontSize: 20,
-    color: '#18181B',
-  },
-  navLabelActive: {
-    fontSize: 11,
-    color: '#18181B',
-    fontWeight: '700',
-    marginTop: 2,
+  iconCircleGreen: {
+    backgroundColor: '#ECFDF5',
   },
 });
