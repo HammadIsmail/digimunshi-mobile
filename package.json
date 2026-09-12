@@ -36,6 +36,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "build:apk": "eas build -p android --profile preview",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
