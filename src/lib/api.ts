@@ -243,10 +243,11 @@ class ApiClient {
   }
 
   async getEntries(customerId: string) {
-    return this.request<Array<{ id: string; amount: number; entry_type: string; created_at: string }>>(
+    return this.request<Array<{ id: string; amount: number; entry_type: string; description?: string; created_at: string }>>(
       `/ledger/entries?customer_id=${customerId}`
     );
   }
+
 
 
   async getSummary() {

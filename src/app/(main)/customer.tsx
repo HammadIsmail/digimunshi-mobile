@@ -9,6 +9,7 @@ interface Entry {
   id: string;
   amount: number;
   entry_type: string;
+  description?: string;
   created_at: string;
 }
 
@@ -53,7 +54,9 @@ export default function CustomerScreen() {
       <View style={styles.entryInfo}>
         <Text style={styles.entryType}>
           {item.entry_type === 'udhaar' ? '💳 ادھار' : '💰 وصولی (جمع)'}
+          {item.description ? ` (${item.description})` : ''}
         </Text>
+
         <Text style={styles.entryDate}>
           {new Date(item.created_at).toLocaleDateString('ur-PK', {
             year: 'numeric',
