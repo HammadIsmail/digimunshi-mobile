@@ -25,20 +25,20 @@ export default function RegisterScreen() {
 
   const handleDigit = (digit: string) => {
     if (step === 'pin') {
-      if (pin.length < 6) {
+      if (pin.length < 4) {
         const newPin = pin + digit;
         setPin(newPin);
         setError('');
-        if (newPin.length === 4 || newPin.length === 6) {
+        if (newPin.length === 4) {
           setStep('confirm');
         }
       }
     } else if (step === 'confirm') {
-      if (confirmPin.length < 6) {
+      if (confirmPin.length < 4) {
         const newConfirm = confirmPin + digit;
         setConfirmPin(newConfirm);
         setError('');
-        if (newConfirm.length === pin.length) {
+        if (newConfirm.length === 4) {
           handleRegister(newConfirm);
         }
       }
@@ -121,11 +121,11 @@ export default function RegisterScreen() {
           {step === 'pin' ? 'Apna PIN Banayein' : 'PIN Confirm Karein'}
         </Text>
         <Text style={styles.subtitle}>
-          {step === 'pin' ? '4-6 digit PIN banayein' : 'PIN dobara daliye'}
+          {step === 'pin' ? '4 digit PIN banayein' : 'PIN dobara daliye'}
         </Text>
 
         <View style={styles.pinDisplay}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
               style={[

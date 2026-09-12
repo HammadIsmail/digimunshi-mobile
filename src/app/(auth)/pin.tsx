@@ -13,12 +13,12 @@ export default function PinScreen() {
   const { login } = useAuth();
 
   const handleDigit = (digit: string) => {
-    if (pin.length < 6) {
+    if (pin.length < 4) {
       const newPin = pin + digit;
       setPin(newPin);
       setError('');
 
-      if (newPin.length === 4 || newPin.length === 6) {
+      if (newPin.length === 4) {
         handleLogin(newPin);
       }
     }
@@ -68,10 +68,10 @@ export default function PinScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>PIN Daliye</Text>
-        <Text style={styles.subtitle}>Apna 4-6 digit PIN daliye</Text>
+        <Text style={styles.subtitle}>Apna 4 digit PIN daliye</Text>
 
         <View style={styles.pinDisplay}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
               style={[styles.pinDot, i < pin.length && styles.pinDotFilled]}
