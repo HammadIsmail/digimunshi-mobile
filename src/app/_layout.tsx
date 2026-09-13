@@ -1,9 +1,10 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { VoiceProvider } from '@/contexts/VoiceContext';
-import { View, ActivityIndicator, LogBox, Platform } from 'react-native';
+import { View, LogBox, Platform } from 'react-native';
+import { StartupLoadingScreen } from '@/components/StartupLoadingScreen';
 
 LogBox.ignoreLogs([
   '"shadow*" style props are deprecated. Use "boxShadow".',
@@ -27,9 +28,19 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [minSplashDone, setMinSplashDone] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    const timer = setTimeout(() => {
+      setMinSplashDone(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const showLoading = isLoading || !minSplashDone;
+
+  useEffect(() => {
+    if (showLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -38,14 +49,10 @@ function RootLayoutNav() {
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(main)');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, showLoading, segments]);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF8F0' }}>
-        <ActivityIndicator size="large" color="#D4740F" />
-      </View>
-    );
+  if (showLoading) {
+    return <StartupLoadingScreen />;
   }
 
   return (
