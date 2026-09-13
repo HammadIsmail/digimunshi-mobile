@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function LoginScreen() {
+  const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
+  const [isRegisterMode, setIsRegisterMode] = useState(params.mode === 'register');
   const [phoneNumber, setPhoneNumber] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    if (params.phone) {
+      let raw = params.phone.replace('+92', '').replace('92', '');
+      if (!raw.startsWith('0') && raw.length > 0) {
+        raw = '0' + raw;
+      }
+      setPhoneNumber(raw);
+    }
+    if (params.mode === 'register') {
+      setIsRegisterMode(true);
+    }
+  }, [params.phone, params.mode]);
 
   const handleKeyPress = (val: string) => {
     if (val === '0300') {
@@ -41,7 +56,18 @@ export default function LoginScreen() {
       formatted = '92' + formatted;
     }
     formatted = '+' + formatted;
-    router.push({ pathname: '/(auth)/pin', params: { phone: formatted } });
+
+    if (isRegisterMode) {
+      // Move to Details screen with user's entered phone number
+      router.push({ pathname: '/(auth)/register', params: { phone: formatted } });
+    } else {
+      // Move to PIN login screen
+      router.push({ pathname: '/(auth)/pin', params: { phone: formatted, mode: 'login' } });
+    }
+  };
+
+  const toggleRegisterMode = () => {
+    setIsRegisterMode((prev) => !prev);
   };
 
   const formatDisplay = (num: string) => {
@@ -58,20 +84,36 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       {/* Top Bar with Shop Icon on Top Right */}
       <View style={styles.topHeader}>
-        <View style={styles.spacer} />
+        {isRegisterMode ? (
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => setIsRegisterMode(false)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backBtnText}>لاگ ان پر جائیں</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.spacer} />
+        )}
+
         <TouchableOpacity
-          style={styles.shopCircleBtn}
-          onPress={() => router.replace('/(auth)/register')}
+          style={[styles.shopCircleBtn, isRegisterMode && styles.shopCircleBtnActive]}
+          onPress={toggleRegisterMode}
           activeOpacity={0.7}
         >
-          <AppIcon name="shop" width={18} height={16} />
+          <AppIcon name="shop" width={18} height={16} tintColor={isRegisterMode ? '#F05700' : '#3F3F46'} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} bounces={false} showsVerticalScrollIndicator={false}>
         {/* Main Title */}
         <View style={styles.titleSection}>
-          <Text style={styles.headingTitle}>اپنا موبائل نمبر درج کریں</Text>
+          <Text style={styles.headingTitle}>
+            {isRegisterMode ? 'نیا کھاتہ بنائیں' : 'اپنا موبائل نمبر درج کریں'}
+          </Text>
+          {isRegisterMode && (
+            <Text style={styles.headingSubtitle}>رجسٹریشن کے لیے اپنا موبائل نمبر درج فرمائیں</Text>
+          )}
         </View>
 
         {/* Label Row: Left is (+92) پاکستان, Right is موبائل فون نمبر */}
@@ -225,6 +267,19 @@ const styles = StyleSheet.create({
   spacer: {
     width: 40,
   },
+  backBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  backBtnText: {
+    fontSize: 12,
+    color: '#F05700',
+    fontWeight: '700',
+  },
   shopCircleBtn: {
     width: 40,
     height: 40,
@@ -234,6 +289,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  shopCircleBtnActive: {
+    borderColor: '#F05700',
+    backgroundColor: '#FFF7ED',
   },
   content: {
     paddingHorizontal: 24,
@@ -249,6 +308,12 @@ const styles = StyleSheet.create({
     color: '#18181B',
     textAlign: 'center',
     letterSpacing: -0.5,
+  },
+  headingSubtitle: {
+    fontSize: 13,
+    color: '#71717A',
+    textAlign: 'center',
+    marginTop: 6,
   },
   labelRow: {
     flexDirection: 'row',

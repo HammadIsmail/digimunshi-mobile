@@ -1,31 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function RegisterScreen() {
   const [ownerName, setOwnerName] = useState('');
   const [shopName, setShopName] = useState('');
   const [businessType, setBusinessType] = useState('karyana');
-  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { register } = useAuth();
+  const { phone } = useLocalSearchParams<{ phone?: string }>();
 
-  const handleRegister = async () => {
+  useEffect(() => {
+    if (!phone) {
+      router.replace('/(auth)/login?mode=register');
+    }
+  }, [phone]);
+
+  const handleNext = () => {
+    if (!phone) {
+      router.replace('/(auth)/login?mode=register');
+      return;
+    }
     if (!ownerName.trim()) {
       setError('براہ کرم اپنا نام درج کریں');
       return;
@@ -34,31 +39,43 @@ export default function RegisterScreen() {
       setError('براہ کرم دکان کا نام درج کریں');
       return;
     }
-    if (pin.length !== 4) {
-      setError('براہ کرم 4 ہندسوں کا پن سیٹ کریں');
-      return;
-    }
 
-    setLoading(true);
     setError('');
-    try {
-      const phoneNumber = phone || '+923009876543';
-      await register(ownerName.trim(), phoneNumber, pin);
-      router.replace('/(main)');
-    } catch (err: any) {
-      setError(err.message || 'رجسٹریشن میں مسئلہ پیش آیا');
-    } finally {
-      setLoading(false);
-    }
+    // Move to PIN selecting and confirming screen
+    router.push({
+      pathname: '/(auth)/pin',
+      params: {
+        phone: phone,
+        ownerName: ownerName.trim(),
+        shopName: shopName.trim(),
+        businessType: businessType,
+        mode: 'register',
+      },
+    });
   };
 
-  const displayPhone = phone || '+92 300 9876543';
+  const formatPhone = (num?: string) => {
+    if (!num) return '';
+    if (num.startsWith('+92') && num.length >= 12) {
+      return `+92 ${num.slice(3, 6)} ${num.slice(6)}`;
+    }
+    return num;
+  };
+
+  const displayPhone = formatPhone(phone);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Top Bar matching Image 2 */}
       <View style={styles.topBar}>
-        <View style={styles.topDot} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.replace({ pathname: '/(auth)/login', params: { phone, mode: 'register' } })}
+          activeOpacity={0.7}
+        >
+          <AppIcon name="right_arrow" width={12} height={12} tintColor="#F05700" />
+          <Text style={styles.backBtnText}>نمبر تبدیل کریں</Text>
+        </TouchableOpacity>
         <Text style={styles.topPhoneText}>{displayPhone}</Text>
       </View>
       <View style={styles.topLine} />
@@ -84,7 +101,10 @@ export default function RegisterScreen() {
               placeholder="محمد عمران"
               placeholderTextColor="#94A3B8"
               value={ownerName}
-              onChangeText={setOwnerName}
+              onChangeText={(t) => {
+                setOwnerName(t);
+                setError('');
+              }}
               textAlign="right"
             />
             <Text style={styles.inputLeftIcon}>👤</Text>
@@ -100,7 +120,10 @@ export default function RegisterScreen() {
               placeholder="عمران کریانہ سٹور"
               placeholderTextColor="#94A3B8"
               value={shopName}
-              onChangeText={setShopName}
+              onChangeText={(t) => {
+                setShopName(t);
+                setError('');
+              }}
               textAlign="right"
             />
             <AppIcon name="shop" size={18} tintColor="#94A3B8" />
@@ -115,7 +138,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.chipsGrid}>
-            {/* 1. کریانہ سٹور (Active by default matching Image 2) */}
+            {/* 1. کریانہ سٹور */}
             <TouchableOpacity
               style={[
                 styles.categoryChip,
@@ -237,40 +260,16 @@ export default function RegisterScreen() {
           </View>
         </View>
 
-        {/* PIN Setup Field */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>4 ہندسوں کا پن کوڈ مقرر کریں</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="••••"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              maxLength={4}
-              secureTextEntry
-              value={pin}
-              onChangeText={setPin}
-              textAlign="right"
-            />
-            <AppIcon name="lock" size={16} tintColor="#94A3B8" />
-          </View>
-        </View>
-
-        {/* Solid #F05700 Orange Button with Arrow matching Image 2 */}
+        {/* Solid #F05700 Orange Button with Arrow to PIN Screen */}
         <TouchableOpacity
           style={styles.submitBtn}
-          onPress={handleRegister}
-          disabled={loading}
-          activeOpacity={0.8}
+          onPress={handleNext}
+          activeOpacity={0.85}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <View style={styles.submitBtnContent}>
-              <Text style={styles.arrowIcon}>←</Text>
-              <Text style={styles.submitBtnText}>کھاتہ شروع کریں</Text>
-            </View>
-          )}
+          <View style={styles.submitBtnContent}>
+            <AppIcon name="left_arrow" width={14} height={14} tintColor="#FFFFFF" />
+            <Text style={styles.submitBtnText}>پن کوڈ مقرر کریں</Text>
+          </View>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -289,6 +288,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  backBtnText: {
+    fontSize: 13,
+    color: '#F05700',
+    fontWeight: '600',
   },
   topDot: {
     width: 8,

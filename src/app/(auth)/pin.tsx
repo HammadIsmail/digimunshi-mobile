@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -6,45 +6,94 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppIcon } from '@/components/AppIcon';
 
 export default function PinScreen() {
+  const params = useLocalSearchParams<{
+    phone?: string;
+    mode?: string;
+    ownerName?: string;
+    shopName?: string;
+    businessType?: string;
+  }>();
+
+  const router = useRouter();
+  const { login, register } = useAuth();
+
+  const isRegister = params.mode === 'register';
+  const phone = params.phone || '';
+
+  // For register mode: 2-stage PIN flow ('create' -> 'confirm')
+  const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
+  const [firstPin, setFirstPin] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { login } = useAuth();
+
+  // If no phone was provided, safely redirect to Number screen
+  useEffect(() => {
+    if (!phone) {
+      router.replace({
+        pathname: '/(auth)/login',
+        params: { mode: isRegister ? 'register' : 'login' },
+      });
+    }
+  }, [phone, isRegister]);
 
   const handleKeyPress = (num: string) => {
+    if (loading) return;
     if (pin.length < 4) {
       const nextPin = pin + num;
       setPin(nextPin);
       setError('');
       if (nextPin.length === 4) {
-        submitPin(nextPin);
+        handlePinComplete(nextPin);
       }
     }
   };
 
   const handleBackspace = () => {
+    if (loading) return;
     setPin((prev) => prev.slice(0, -1));
     setError('');
   };
 
   const handleClear = () => {
+    if (loading) return;
     setPin('');
     setError('');
   };
 
-  const submitPin = async (fullPin?: string) => {
-    const pinToUse = fullPin || pin;
-    if (pinToUse.length !== 4) {
-      setError('براہ کرم 4 ہندسوں کا پن درج کریں');
-      return;
+  const handlePinComplete = (enteredPin: string) => {
+    if (isRegister) {
+      if (pinStep === 'create') {
+        // Stage 1 complete: Save first PIN and transition to confirmation
+        setTimeout(() => {
+          setFirstPin(enteredPin);
+          setPin('');
+          setPinStep('confirm');
+          setError('');
+        }, 150);
+      } else {
+        // Stage 2 complete: Check if confirmation matches
+        if (enteredPin !== firstPin) {
+          setError('پن کوڈ مماثل نہیں ہے، دوبارہ درج کریں');
+          setTimeout(() => {
+            setPin('');
+          }, 300);
+          return;
+        }
+        // Match! Submit registration
+        executeRegistration(enteredPin);
+      }
+    } else {
+      // Login mode: Submit PIN
+      executeLogin(enteredPin);
     }
+  };
 
+  const executeLogin = async (enteredPin: string) => {
     setLoading(true);
     setError('');
     try {
-      await login(phone || '+923009876543', pinToUse);
+      await login(phone, enteredPin);
       router.replace('/(main)');
     } catch (err: any) {
       setError(err.message || 'غلط پن کوڈ، دوبارہ کوشش کریں');
@@ -54,22 +103,102 @@ export default function PinScreen() {
     }
   };
 
-  const displayPhone = phone || '+92 300 9876543';
+  const executeRegistration = async (confirmedPin: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const owner = (params.ownerName || '').trim() || 'دکاندار';
+      await register(owner, phone, confirmedPin);
+      router.replace('/(main)');
+    } catch (err: any) {
+      setError(err.message || 'رجسٹریشن میں مسئلہ پیش آیا، دوبارہ کوشش کریں');
+      setPin('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualSubmit = () => {
+    if (pin.length === 4) {
+      handlePinComplete(pin);
+    } else {
+      setError('براہ کرم 4 ہندسوں کا پن درج کریں');
+    }
+  };
+
+  const resetToCreateStep = () => {
+    setPinStep('create');
+    setFirstPin('');
+    setPin('');
+    setError('');
+  };
+
+  const handleTopBack = () => {
+    if (isRegister) {
+      if (pinStep === 'confirm') {
+        resetToCreateStep();
+      } else {
+        router.back();
+      }
+    } else {
+      router.replace({ pathname: '/(auth)/login', params: { phone, mode: 'login' } });
+    }
+  };
+
+  const formatPhone = (num?: string) => {
+    if (!num) return '';
+    if (num.startsWith('+92') && num.length >= 12) {
+      return `+92 ${num.slice(3, 6)} ${num.slice(6)}`;
+    }
+    return num;
+  };
+
+  const displayPhone = formatPhone(phone);
+
+  // Dynamic titles and labels based on mode and step
+  let title = '4 ہندسوں کا پن درج کریں';
+  let subtitle = '';
+  let buttonLabel = 'تصدیق کریں';
+
+  if (isRegister) {
+    if (pinStep === 'create') {
+      title = '4 ہندسوں کا پن مقرر کریں';
+      subtitle = 'اپنے اکاؤنٹ کے لیے نیا 4 ہندسوں کا پن کوڈ بنائیں';
+      buttonLabel = 'اگلا مرحلہ ←';
+    } else {
+      title = 'پن کوڈ کی دوبارہ تصدیق کریں';
+      subtitle = 'تصدیق کے لیے وہی 4 ہندسوں کا پن دوبارہ درج کریں';
+      buttonLabel = 'کھاتہ شروع کریں ←';
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Bar matching Image 4 */}
+      {/* Top Bar */}
       <View style={styles.topBar}>
-        <View style={styles.topDot} />
-        <Text style={styles.topPhoneText}>{displayPhone}</Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleTopBack} activeOpacity={0.7}>
+          <AppIcon name="right_arrow" width={12} height={12} tintColor="#F05700" />
+          <Text style={styles.backButtonText}>
+            {isRegister && pinStep === 'confirm'
+              ? 'دوبارہ پن درج کریں'
+              : isRegister
+              ? 'تفصیلات'
+              : 'نمبر تبدیل کریں'}
+          </Text>
+        </TouchableOpacity>
+        <View style={styles.phoneBadge}>
+          <View style={styles.topDot} />
+          <Text style={styles.topPhoneText}>{displayPhone}</Text>
+        </View>
       </View>
       <View style={styles.topLine} />
 
       <View style={styles.mainContent}>
-        {/* Title */}
-        <Text style={styles.titleText}>4 ہندسوں کا پن درج کریں</Text>
+        {/* Title & Subtitle */}
+        <Text style={styles.titleText}>{title}</Text>
+        {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
 
-        {/* 4 PIN Indicator Dots matching Image 4 */}
+        {/* 4 PIN Indicator Dots */}
         <View style={styles.dotsRow}>
           {[0, 1, 2, 3].map((index) => {
             const isFilled = index < pin.length;
@@ -92,7 +221,7 @@ export default function PinScreen() {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* Keypad matching Image 4: #F05700 Orange Digits with Underlines */}
+        {/* Keypad */}
         <View style={styles.keypadContainer}>
           <View style={styles.keypadRow}>
             {['1', '2', '3'].map((num) => (
@@ -165,31 +294,54 @@ export default function PinScreen() {
           </View>
         </View>
 
-        {/* Solid #F05700 Orange Button matching Image 4 */}
+        {/* Action Button */}
         <TouchableOpacity
           style={styles.confirmBtn}
-          onPress={() => submitPin()}
+          onPress={handleManualSubmit}
           disabled={loading}
           activeOpacity={0.85}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.confirmBtnText}>تصدیق کریں</Text>
+            <Text style={styles.confirmBtnText}>{buttonLabel}</Text>
           )}
         </TouchableOpacity>
 
-        {/* Register Account Link */}
-        <TouchableOpacity
-          style={styles.registerLinkBtn}
-          onPress={() => router.replace('/(auth)/register')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.registerPromptText}>
-            اگر اکاؤنٹ نہیں ہے تو{' '}
-            <Text style={styles.registerHighlightText}>رجسٹر کریں</Text>
-          </Text>
-        </TouchableOpacity>
+        {/* Alternate Navigation Links */}
+        {!isRegister ? (
+          <TouchableOpacity
+            style={styles.registerLinkBtn}
+            onPress={() =>
+              router.replace({
+                pathname: '/(auth)/login',
+                params: { mode: 'register', phone: phone || '' },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.registerPromptText}>
+              اگر اکاؤنٹ نہیں ہے تو{' '}
+              <Text style={styles.registerHighlightText}>رجسٹر کریں</Text>
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.registerLinkBtn}
+            onPress={() =>
+              router.replace({
+                pathname: '/(auth)/login',
+                params: { mode: 'login', phone: phone || '' },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.registerPromptText}>
+              پہلے سے اکاؤنٹ موجود ہے؟{' '}
+              <Text style={styles.registerHighlightText}>لاگ ان کریں</Text>
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -208,6 +360,23 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
   },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  backButtonText: {
+    fontSize: 13,
+    color: '#F05700',
+    fontWeight: '600',
+  },
+  phoneBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   topDot: {
     width: 8,
     height: 8,
@@ -223,7 +392,7 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E7EB',
     marginHorizontal: 20,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   mainContent: {
     flex: 1,
@@ -231,18 +400,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   titleText: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#18181B',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 13,
+    color: '#71717A',
+    textAlign: 'center',
+    marginBottom: 28,
+    paddingHorizontal: 16,
   },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-    marginBottom: 48,
+    marginBottom: 36,
   },
   dotOuter: {
     width: 14,
@@ -275,8 +451,8 @@ const styles = StyleSheet.create({
   keypadContainer: {
     width: '100%',
     maxWidth: 320,
-    gap: 24,
-    marginBottom: 48,
+    gap: 20,
+    marginBottom: 36,
   },
   keypadRow: {
     flexDirection: 'row',
