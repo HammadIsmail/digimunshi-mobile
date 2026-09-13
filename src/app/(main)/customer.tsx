@@ -168,7 +168,7 @@ export default function CustomerScreen() {
   };
 
   const handleShareStatement = async () => {
-    const storeName = shop?.shop_name || 'عمران کریانہ سٹور';
+    const storeName = shop?.shop_name || 'ڈیجی منشی رجسٹر';
     let text = `📄 کھاتہ تفصیل - ${name}\nدکان: ${storeName}\nکل بقایا ادھار: Rs. ${balance.toLocaleString()}\n--------------------\n`;
 
     entries.slice(0, 5).forEach((e) => {
@@ -186,9 +186,9 @@ export default function CustomerScreen() {
     }
   };
 
-  const ownerGreeting = shop?.owner_name ? `السلام علیکم، ${shop.owner_name}` : 'السلام علیکم، عمران بھائی';
-  const shopTitle = shop?.shop_name || 'عمران کریانہ سٹور';
-  const customerInitial = name && name.trim() ? name.trim()[0] : 'ح';
+  const ownerGreeting = shop?.owner_name ? `السلام علیکم، ${shop.owner_name}` : 'السلام علیکم، محترم دکاندار';
+  const shopTitle = shop?.shop_name || 'ڈیجی منشی رجسٹر';
+  const customerInitial = name && name.trim() ? name.trim()[0] : 'گ';
 
   const renderEntry = ({ item }: { item: Entry }) => {
     const isUdhaar = item.entry_type === 'udhaar';

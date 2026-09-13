@@ -3,7 +3,25 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { VoiceProvider } from '@/contexts/VoiceContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox, Platform } from 'react-native';
+
+LogBox.ignoreLogs([
+  '"shadow*" style props are deprecated. Use "boxShadow".',
+  'props.pointerEvents is deprecated. Use style.pointerEvents',
+]);
+
+if (Platform.OS === 'web' && typeof console !== 'undefined') {
+  const origWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    if (
+      typeof args[0] === 'string' &&
+      (args[0].includes('shadow*') || args[0].includes('pointerEvents'))
+    ) {
+      return;
+    }
+    origWarn(...args);
+  };
+}
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();

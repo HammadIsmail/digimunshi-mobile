@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AppIcon } from '@/components/AppIcon';
+import { api } from '@/lib/api';
+import { playVoiceAlert } from '@/lib/sound';
 
 export default function LoginScreen() {
   const params = useLocalSearchParams<{ phone?: string; mode?: string }>();
   const [isRegisterMode, setIsRegisterMode] = useState(params.mode === 'register');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,6 +28,7 @@ export default function LoginScreen() {
   }, [params.phone, params.mode]);
 
   const handleKeyPress = (val: string) => {
+    setError('');
     if (val === '0300') {
       if (phoneNumber.length === 0) {
         setPhoneNumber('0300');
@@ -39,12 +44,13 @@ export default function LoginScreen() {
   };
 
   const handleBackspace = () => {
+    setError('');
     setPhoneNumber((prev) => prev.slice(0, -1));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (phoneNumber.length < 10) {
-      Alert.alert('غلط نمبر', 'موبائل نمبر کم از کم 10 یا 11 ہندسوں کا ہونا چاہیے');
+      setError('موبائل نمبر کم از کم 10 یا 11 ہندسوں کا ہونا چاہیے');
       return;
     }
 
@@ -61,8 +67,24 @@ export default function LoginScreen() {
       // Move to Details screen with user's entered phone number
       router.push({ pathname: '/(auth)/register', params: { phone: formatted } });
     } else {
-      // Move to PIN login screen
-      router.push({ pathname: '/(auth)/pin', params: { phone: formatted, mode: 'login' } });
+      // Check if account exists before proceeding to PIN
+      setLoading(true);
+      setError('');
+      try {
+        const check = await api.checkPhone(formatted);
+        if (!check.exists) {
+          const notFoundMsg = 'آپ کا اکاؤنٹ موجود نہیں ہے۔ براہِ کرم نیا اکاؤنٹ بنائیں۔';
+          setError(notFoundMsg);
+          playVoiceAlert('newAccount');
+          return;
+        }
+        // Move to PIN login screen
+        router.push({ pathname: '/(auth)/pin', params: { phone: formatted, mode: 'login' } });
+      } catch (err: any) {
+        router.push({ pathname: '/(auth)/pin', params: { phone: formatted, mode: 'login' } });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -122,51 +144,70 @@ export default function LoginScreen() {
           <Text style={styles.inputLabel}>موبائل فون نمبر</Text>
         </View>
 
-        {/* Input Box */}
+        {/* Input Box with +92 on LEFT side */}
         <View style={[styles.inputBox, isValid && styles.inputBoxActive]}>
+          <View style={styles.dialCodeBadge}>
+            <AppIcon name="flag" width={22} height={16} />
+            <Text style={styles.dialCodeText}>+92</Text>
+          </View>
+
+          <View style={styles.dividerLine} />
+
           <View style={styles.phoneDisplay}>
             <Text style={phoneNumber ? styles.phoneText : styles.placeholderText}>
               <Text style={styles.cursorText}>|</Text>
               {phoneNumber ? formatDisplay(phoneNumber) : '300 1234567'}
             </Text>
           </View>
-
-          <View style={styles.dividerLine} />
-
-          <View style={styles.dialCodeBadge}>
-            <Text style={styles.dialCodeText}>+92</Text>
-            <AppIcon name="flag" width={22} height={16} />
-          </View>
         </View>
+
+        {/* Error message banner */}
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{error}</Text>
+            {!isRegisterMode && (
+              <TouchableOpacity
+                style={styles.switchRegisterBtn}
+                onPress={() => {
+                  setError('');
+                  setIsRegisterMode(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.switchRegisterText}>نیا اکاؤنٹ رجسٹر کریں ←</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
 
         {/* Minimalist Wireframe Keypad with Underline Bars */}
         <View style={styles.keypadGrid}>
-          {/* Row 1: 3 (DEF), 2, 1 */}
+          {/* Row 1: 1, 2 (ABC), 3 (DEF) */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('3')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>3</Text>
-              <Text style={styles.keySubLetters}>DEF</Text>
-              <View style={styles.keyUnderline} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('2')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>2</Text>
-              <Text style={styles.keySubLettersPlaceholder}> </Text>
-              <View style={styles.keyUnderline} />
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('1')} activeOpacity={0.6}>
               <Text style={styles.keyDigit}>1</Text>
               <Text style={styles.keySubLettersPlaceholder}> </Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('2')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>2</Text>
+              <Text style={styles.keySubLetters}>ABC</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('3')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>3</Text>
+              <Text style={styles.keySubLetters}>DEF</Text>
+              <View style={styles.keyUnderline} />
+            </TouchableOpacity>
           </View>
 
-          {/* Row 2: 6 (MNO), 5 (JKL), 4 (GHI) */}
+          {/* Row 2: 4 (GHI), 5 (JKL), 6 (MNO) */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('6')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>6</Text>
-              <Text style={styles.keySubLetters}>MNO</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('4')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>4</Text>
+              <Text style={styles.keySubLetters}>GHI</Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
 
@@ -176,18 +217,18 @@ export default function LoginScreen() {
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('4')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>4</Text>
-              <Text style={styles.keySubLetters}>GHI</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('6')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>6</Text>
+              <Text style={styles.keySubLetters}>MNO</Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
 
-          {/* Row 3: 9 (WXYZ), 8 (TUV), 7 (PQRS) */}
+          {/* Row 3: 7 (PQRS), 8 (TUV), 9 (WXYZ) */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('9')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>9</Text>
-              <Text style={styles.keySubLetters}>WXYZ</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('7')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>7</Text>
+              <Text style={styles.keySubLetters}>PQRS</Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
 
@@ -197,19 +238,17 @@ export default function LoginScreen() {
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('7')} activeOpacity={0.6}>
-              <Text style={styles.keyDigit}>7</Text>
-              <Text style={styles.keySubLetters}>PQRS</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('9')} activeOpacity={0.6}>
+              <Text style={styles.keyDigit}>9</Text>
+              <Text style={styles.keySubLetters}>WXYZ</Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
           </View>
 
-          {/* Row 4: Backspace, 0 (+), 0300 */}
+          {/* Row 4: 0300, 0 (+), Backspace */}
           <View style={styles.keypadRow}>
-            <TouchableOpacity style={styles.keyBtn} onPress={handleBackspace} activeOpacity={0.6}>
-              <View style={styles.backspaceWrapper}>
-                <AppIcon name="backspace" width={22} height={16} tintColor="#E05700" />
-              </View>
+            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('0300')} activeOpacity={0.6}>
+              <Text style={styles.presetText}>0300</Text>
               <Text style={styles.keySubLettersPlaceholder}> </Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
@@ -220,8 +259,10 @@ export default function LoginScreen() {
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.keyBtn} onPress={() => handleKeyPress('0300')} activeOpacity={0.6}>
-              <Text style={styles.presetText}>0300</Text>
+            <TouchableOpacity style={styles.keyBtn} onPress={handleBackspace} activeOpacity={0.6}>
+              <View style={styles.backspaceWrapper}>
+                <AppIcon name="backspace" width={22} height={16} tintColor="#E05700" />
+              </View>
               <Text style={styles.keySubLettersPlaceholder}> </Text>
               <View style={styles.keyUnderline} />
             </TouchableOpacity>
@@ -232,13 +273,17 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={[styles.ctaButton, isValid ? styles.ctaButtonActive : styles.ctaButtonDisabled]}
           onPress={handleContinue}
-          disabled={!isValid}
+          disabled={!isValid || loading}
           activeOpacity={0.85}
         >
-          <View style={styles.ctaContentRow}>
-            <AppIcon name="left_arrow" width={14} height={14} tintColor="#FFFFFF" />
-            <Text style={styles.ctaButtonText}>آگے بڑھیں</Text>
-          </View>
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <View style={styles.ctaContentRow}>
+              <AppIcon name="left_arrow" width={14} height={14} tintColor="#FFFFFF" />
+              <Text style={styles.ctaButtonText}>آگے بڑھیں</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Trust Assurance Footer */}
@@ -297,6 +342,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 24,
     paddingBottom: 32,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   titleSection: {
     marginTop: 20,
@@ -444,11 +492,42 @@ const styles = StyleSheet.create({
   },
   ctaButtonActive: {
     backgroundColor: '#F05700',
-    shadowColor: '#F05700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 4px 12px rgba(240, 87, 0, 0.25)' }
+      : {
+          shadowColor: '#F05700',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 8,
+          elevation: 4,
+        }),
+  },
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 20,
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  switchRegisterBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  switchRegisterText: {
+    fontSize: 13,
+    color: '#F05700',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   ctaButtonDisabled: {
     backgroundColor: '#FDBA74',

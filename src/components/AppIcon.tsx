@@ -5,6 +5,7 @@ import { StyleProp, ImageStyle } from 'react-native';
 export type IconName =
   | 'backspace'
   | 'clothing_store'
+  | 'cross'
   | 'down_arrow'
   | 'flag'
   | 'general_store'
@@ -29,6 +30,7 @@ export type IconName =
 const iconMap: Record<IconName, any> = {
   backspace: require('@/assets/images/icons/backspace.svg'),
   clothing_store: require('@/assets/images/icons/clothing_store.svg'),
+  cross: require('@/assets/images/icons/cross.svg'),
   down_arrow: require('@/assets/images/icons/down_arrow.svg'),
   flag: require('@/assets/images/icons/flag.svg'),
   general_store: require('@/assets/images/icons/general_store.svg'),

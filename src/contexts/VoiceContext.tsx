@@ -37,6 +37,7 @@ interface VoiceContextType {
   triggerRefresh: () => void;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
+  cancelRecording: () => Promise<void>;
   confirmAction: (pendingActionId: string, confirmed: boolean) => Promise<any>;
   clearResponse: () => void;
 }
@@ -49,6 +50,7 @@ const VoiceContext = createContext<VoiceContextType>({
   triggerRefresh: () => {},
   startRecording: async () => {},
   stopRecording: async () => {},
+  cancelRecording: async () => {},
   confirmAction: async () => {},
   clearResponse: () => {},
 });
@@ -179,6 +181,21 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const cancelRecording = async () => {
+    isStartingRef.current = false;
+    setIsRecording(false);
+    setIsProcessing(false);
+
+    try {
+      if (recorder.isRecording || recorderState.isRecording) {
+        await recorder.stop();
+      }
+      await setAudioModeAsync({ allowsRecording: false });
+    } catch (e) {
+      console.warn('Error during cancelRecording:', e);
+    }
+  };
+
   const confirmAction = async (pendingActionId: string, confirmed: boolean) => {
     setIsProcessing(true);
     try {
@@ -218,6 +235,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         triggerRefresh,
         startRecording,
         stopRecording,
+        cancelRecording,
         confirmAction,
         clearResponse,
       }}

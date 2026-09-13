@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AppIcon } from '@/components/AppIcon';
+import { FieldMicButton } from '@/components/voice/FieldMicButton';
 
 export default function RegisterScreen() {
   const [ownerName, setOwnerName] = useState('');
@@ -96,6 +98,14 @@ export default function RegisterScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>آپ کا نام</Text>
           <View style={styles.inputWrapper}>
+            <FieldMicButton
+              fieldName="نام"
+              size={32}
+              onTranscribe={(text) => {
+                setOwnerName(text);
+                setError('');
+              }}
+            />
             <TextInput
               style={styles.textInput}
               placeholder="محمد عمران"
@@ -115,6 +125,14 @@ export default function RegisterScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>دکان کا نام</Text>
           <View style={styles.inputWrapper}>
+            <FieldMicButton
+              fieldName="دکان"
+              size={32}
+              onTranscribe={(text) => {
+                setShopName(text);
+                setError('');
+              }}
+            />
             <TextInput
               style={styles.textInput}
               placeholder="عمران کریانہ سٹور"
@@ -359,16 +377,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 50,
+    paddingHorizontal: 10,
+    height: 52,
     backgroundColor: '#FFFFFF',
+    gap: 8,
   },
   textInput: {
     flex: 1,
     fontSize: 14,
     color: '#18181B',
     paddingVertical: 10,
-    paddingLeft: 10,
+    paddingHorizontal: 8,
   },
   inputLeftIcon: {
     fontSize: 16,
@@ -443,11 +462,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
-    shadowColor: '#F05700',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 3px 6px rgba(240, 87, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#F05700',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
+      },
+    }),
   },
   submitBtnContent: {
     flexDirection: 'row',

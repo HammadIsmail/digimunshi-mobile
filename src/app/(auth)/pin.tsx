@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppIcon } from '@/components/AppIcon';
+import { playVoiceAlert } from '@/lib/sound';
 
 export default function PinScreen() {
   const params = useLocalSearchParams<{
@@ -74,7 +75,8 @@ export default function PinScreen() {
       } else {
         // Stage 2 complete: Check if confirmation matches
         if (enteredPin !== firstPin) {
-          setError('پن کوڈ مماثل نہیں ہے، دوبارہ درج کریں');
+          setError('آپ کا پِن کوڈ ایک جیسا نہیں ہے، براہِ کرم دوبارہ درج کریں۔');
+          playVoiceAlert('pinCodeNotSame');
           setTimeout(() => {
             setPin('');
           }, 300);
@@ -96,7 +98,18 @@ export default function PinScreen() {
       await login(phone, enteredPin);
       router.replace('/(main)');
     } catch (err: any) {
-      setError(err.message || 'غلط پن کوڈ، دوبارہ کوشش کریں');
+      const errMsg = err.message || '';
+      if (
+        errMsg.includes('موجود نہیں') ||
+        errMsg.includes('Account not found') ||
+        errMsg.includes('Shop not found')
+      ) {
+        setError('آپ کا اکاؤنٹ موجود نہیں ہے۔ براہِ کرم نیا اکاؤنٹ بنائیں۔');
+        playVoiceAlert('newAccount');
+      } else {
+        setError('آپ کا پِن غلط ہے۔ براہِ کرم دوبارہ درست پِن درج کریں۔');
+        playVoiceAlert('wrongPin');
+      }
       setPin('');
     } finally {
       setLoading(false);
@@ -491,11 +504,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 'auto',
     marginBottom: 16,
-    shadowColor: '#F05700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 4px 12px rgba(240, 87, 0, 0.25)' }
+      : {
+          shadowColor: '#F05700',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 8,
+          elevation: 4,
+        }),
   },
   confirmBtnText: {
     color: '#FFFFFF',

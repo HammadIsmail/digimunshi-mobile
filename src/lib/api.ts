@@ -11,12 +11,30 @@ interface RequestConfig {
 }
 
 function extractErrorMessage(error: any): string {
-  if (typeof error.detail === 'string') return error.detail;
-  if (Array.isArray(error.detail) && error.detail.length > 0) {
-    return error.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+  let msg = '';
+  if (typeof error.detail === 'string') msg = error.detail;
+  else if (Array.isArray(error.detail) && error.detail.length > 0) {
+    msg = error.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+  } else if (error.message) {
+    msg = error.message;
   }
-  if (error.message) return error.message;
-  return 'Unknown error';
+
+  if (!msg) return 'نامعلوم خرابی پیش آئی ہے۔';
+
+  if (msg.includes('Account not found') || msg.includes('Shop not found')) {
+    return 'آپ کا اکاؤنٹ موجود نہیں ہے۔ براہِ کرم نیا اکاؤنٹ بنائیں۔';
+  }
+  if (msg.includes('Invalid PIN') || msg.includes('Invalid phone number or PIN')) {
+    return 'آپ کا پِن غلط ہے۔ براہِ کرم دوبارہ درست پِن درج کریں۔';
+  }
+  if (msg.includes('Phone number already registered')) {
+    return 'یہ موبائل نمبر پہلے سے رجسٹرڈ ہے۔ براہِ کرم لاگ ان کریں۔';
+  }
+  if (msg.includes('Account locked')) {
+    return 'اکاؤنٹ عارضی طور پر لاک ہے۔ براہِ کرم کچھ دیر بعد کوشش کریں۔';
+  }
+
+  return msg;
 }
 
 function isTokenExpired(token: string | null): boolean {
@@ -240,6 +258,16 @@ class ApiClient {
     return data;
   }
 
+  async checkPhone(phoneNumber: string): Promise<{ exists: boolean }> {
+    try {
+      return await this.request<{ exists: boolean }>(
+        `/auth/check-phone?phone_number=${encodeURIComponent(phoneNumber)}`
+      );
+    } catch {
+      return { exists: false };
+    }
+  }
+
   async login(phoneNumber: string, pin: string) {
     const data = await this.request<{
       access_token: string;
@@ -332,6 +360,57 @@ class ApiClient {
       },
     });
   }
+
+  async transcribeAudio(audioUri: string): Promise<string> {
+    let base64Audio = '';
+    const isWav = audioUri.toLowerCase().endsWith('.wav');
+    const format = isWav ? 'wav' : 'm4a';
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(audioUri);
+      const blob = await response.blob();
+      base64Audio = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const b64 = result.includes(',') ? result.split(',')[1] : result;
+          resolve(b64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      try {
+        base64Audio = await FileSystem.readAsStringAsync(audioUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch {
+        const response = await fetch(audioUri);
+        const blob = await response.blob();
+        base64Audio = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const b64 = result.includes(',') ? result.split(',')[1] : result;
+            resolve(b64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+    }
+
+    const res = await this.request<{ transcript: string }>('/voice/transcribe', {
+      method: 'POST',
+      body: {
+        audio_base64: base64Audio,
+        format,
+      },
+    });
+
+    return res.transcript || '';
+  }
+
 
   async confirmVoice(pendingActionId: string, confirmed: boolean) {
     return this.request<{

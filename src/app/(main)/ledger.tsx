@@ -84,7 +84,7 @@ export default function LedgerScreen() {
   }, [customers, searchQuery, activeFilter]);
 
   const handleSendReminder = async (customer: Customer) => {
-    const storeName = shop?.shop_name || 'عمران کریانہ سٹور';
+    const storeName = shop?.shop_name || 'ڈیجی منشی رجسٹر';
     const msg = `محترم ${customer.name} صاحب! ${storeName} سے آپ کا بقایا ادھار Rs. ${customer.balance.toLocaleString()} واجب الادا ہے۔ برائے مہربانی جلد از جلد ادائیگی فرمائیں۔ شکریہ!`;
     try {
       await Share.share({ message: msg });
@@ -101,8 +101,8 @@ export default function LedgerScreen() {
     }
   };
 
-  const shopTitle = shop?.shop_name || 'عمران کریانہ سٹور';
-  const ownerInitial = shop?.owner_name ? shop.owner_name.trim()[0] : 'ع';
+  const shopTitle = shop?.shop_name || 'ڈیجی منشی رجسٹر';
+  const ownerInitial = shop?.owner_name ? shop.owner_name.trim()[0] : 'د';
 
   const renderCustomerCard = ({ item }: { item: Customer }) => {
     const initialLetter = item.name.trim() ? item.name.trim()[0] : 'گ';

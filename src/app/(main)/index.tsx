@@ -49,12 +49,12 @@ export default function HomeScreen() {
     }
   };
 
-  const ownerName = shop?.owner_name || 'عمران بھائی';
-  const shopName = shop?.shop_name || 'عمران کریانہ سٹور';
-  const initialLetter = ownerName.trim() ? ownerName.trim()[0] : 'ع';
+  const ownerName = shop?.owner_name || 'محترم دکاندار';
+  const shopName = shop?.shop_name || 'ڈیجی منشی رجسٹر';
+  const initialLetter = ownerName.trim() ? ownerName.trim()[0] : 'د';
 
-  const totalDues = summary?.total_outstanding ?? 45500;
-  const customerCount = summary?.customer_count ?? (customers.length > 0 ? customers.length : 12);
+  const totalDues = summary?.total_outstanding ?? 0;
+  const customerCount = summary?.customer_count ?? customers.length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,12 +111,15 @@ export default function HomeScreen() {
 
         {/* Center Voice Section with #F05700 Mic Button */}
         <View style={styles.voiceSection}>
-          <Text style={styles.voiceInstructionText}>بولنے کے لیے بٹن دبائیں</Text>
+          <Text
+            style={[
+              styles.voiceInstructionText,
+              isRecording && styles.voiceInstructionTextActive,
+            ]}
+          >
+            {isRecording ? 'آواز سن رہا ہے... بولیں یا منسوخ کریں' : 'بولنے کے لیے بٹن دبائیں'}
+          </Text>
           <MicButton />
-
-          <View style={styles.voicePromptPill}>
-            <Text style={styles.voicePromptPillText}>"حماد کے نام پندرہ سو ادھار لکھو"</Text>
-          </View>
         </View>
 
         {/* Guardrail Voice Confirmation Prompt Modal */}
@@ -206,47 +209,13 @@ export default function HomeScreen() {
               );
             })
           ) : (
-            <>
-              {/* Sample Preview Rows matching Image 5 */}
-              <View style={styles.recentRowCard}>
-                <Text style={styles.recentRowAmount}>+Rs. 20,000</Text>
-                <View style={styles.recentRowRightGroup}>
-                  <View style={styles.recentMetaCol}>
-                    <Text style={styles.recentName}>حماد</Text>
-                    <Text style={styles.recentSub}>ادھار دیا • 10 منٹ پہلے</Text>
-                  </View>
-                  <View style={[styles.recentIconCircle, styles.iconCircleRed]}>
-                    <AppIcon name="up_arrow" size={10} tintColor="#DC2626" />
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.recentRowCard}>
-                <Text style={[styles.recentRowAmount, styles.amtGreen]}>-Rs. 1,500</Text>
-                <View style={styles.recentRowRightGroup}>
-                  <View style={styles.recentMetaCol}>
-                    <Text style={styles.recentName}>علی قریشی</Text>
-                    <Text style={styles.recentSub}>وصول ہوئے • 2:15 بجے</Text>
-                  </View>
-                  <View style={[styles.recentIconCircle, styles.iconCircleGreen]}>
-                    <AppIcon name="tick" size={10} tintColor="#059669" />
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.recentRowCard}>
-                <Text style={styles.recentRowAmount}>+Rs. 850</Text>
-                <View style={styles.recentRowRightGroup}>
-                  <View style={styles.recentMetaCol}>
-                    <Text style={styles.recentName}>عثمان گجر</Text>
-                    <Text style={styles.recentSub}>ادھار دیا • کل شام</Text>
-                  </View>
-                  <View style={[styles.recentIconCircle, styles.iconCircleRed]}>
-                    <AppIcon name="up_arrow" size={10} tintColor="#DC2626" />
-                  </View>
-                </View>
-              </View>
-            </>
+            <View style={styles.emptyRecentBox}>
+              <AppIcon name="khata" size={28} tintColor="#A1A1AA" />
+              <Text style={styles.emptyRecentTitle}>کوئی حالیہ لین دین نہیں ہے</Text>
+              <Text style={styles.emptyRecentSub}>
+                نیا ادھار یا وصولی شامل کرنے کے لیے مائیک کا بٹن دبائیں
+              </Text>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -419,6 +388,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
   },
+  voiceInstructionTextActive: {
+    color: '#F05700',
+    fontWeight: '700',
+  },
   voicePromptPill: {
     marginTop: 12,
     backgroundColor: '#F8FAFC',
@@ -528,5 +501,27 @@ const styles = StyleSheet.create({
   },
   iconCircleGreen: {
     backgroundColor: '#ECFDF5',
+  },
+  emptyRecentBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F4F4F5',
+    gap: 8,
+    marginTop: 6,
+  },
+  emptyRecentTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3F3F46',
+  },
+  emptyRecentSub: {
+    fontSize: 12,
+    color: '#71717A',
+    textAlign: 'center',
   },
 });
